@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""Generate a `.env` file for the dbtrials compose deployment.
+
+Local self-signed (default):
+
+    ./generate-env.py
+
+Internet with Let's Encrypt (a domain enables it; email is required):
+
+    ./generate-env.py --domain rentals.example.com --acme-email you@example.com
+
+A Django SECRET_KEY is generated automatically unless you pass one. The
+ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS values are derived from the domain (or
+localhost) so they always match how users actually reach the app -- including
+omitting the port for standard HTTPS (443) and adding it otherwise.
+"""
+
+from __future__ import annotations
+
+import argparse
+import secrets
+import sys
+from pathlib import Path
+
+DEFAULT_OUTPUT = Path(__file__).resolve().parent / ".env"
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command-line options."""
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--domain",
+        default="",
+        help="Public domain for an internet deployment (enables Let's Encrypt and "
+        "the internet Caddyfile). Omit for a local self-signed deployment.",
+    )
+    parser.add_argument(
+        "--acme-email",
+        default="",
+        help="Contact email for Let's Encrypt. Required together with --domain.",
+    )
+    parser.add_argument(
+        "--secret-key",
+        default="",
+        help="Django SECRET_KEY. A strong random one is generated if omitted.",
+    )
+    parser.add_argument("--http-port", type=int, default=80, help="Public HTTP port.")
+    parser.add_argument("--https-port", type=int, default=443, help="Public HTTPS port.")
+    parser.add_argument(
+        "--backend-port",
+        type=int,
+        default=8000,
+        help="Port gunicorn listens on and Caddy proxies to (backend:<port>).",
+    )
+    parser.add_argument("--gunicorn-workers", type=int, default=3)
+    parser.add_argument(
+        "--allowed-host",
+        action="append",
+        default=[],
+        metavar="HOST",
+        help="Extra DJANGO_ALLOWED_HOSTS entry (repeatable).",
+    )
+    parser.add_argument(
+        "--csrf-origin",
+        action="append",
+        default=[],
+        metavar="ORIGIN",
+        help="Extra DJANGO_CSRF_TRUSTED_ORIGINS entry, e.g. https://host (repeatable).",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help="Path to write (default: ./.env next to this script).",
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Overwrite an existing output file (otherwise refuse, to protect the "
+        "existing SECRET_KEY).",
+    )
+    return parser.parse_args(argv)
+
+
+def _dedupe(items: list[str]) -> list[str]:
+    """Return items without duplicates, preserving order."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        if item and item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+def build_env(args: argparse.Namespace) -> dict[str, str]:
+    """Compute the env values from the options (deriving host/CSRF from the domain)."""
+    internet = bool(args.domain)
+    if internet and not args.acme_email:
+        raise SystemExit("error: --acme-email is required together with --domain.")
+
+    site_address = args.domain if internet else "localhost"
+    caddyfile = "./Caddyfile.internet" if internet else "./Caddyfile.local"
+    secret_key = args.secret_key or secrets.token_urlsafe(64)
+
+    # CSRF origins carry scheme + host + (only when non-standard) port. Standard
+    # HTTPS (443) must NOT include a port, or the browser Origin won't match.
+    port_suffix = "" if args.https_port == 443 else f":{args.https_port}"
+
+    if internet:
+        allowed_hosts = [args.domain]
+        csrf_origins = [f"https://{args.domain}{port_suffix}"]
+    else:
+        allowed_hosts = ["localhost", "127.0.0.1"]
+        csrf_origins = [f"https://localhost{port_suffix}"]
+
+    allowed_hosts = _dedupe(allowed_hosts + args.allowed_host)
+    csrf_origins = _dedupe(csrf_origins + args.csrf_origin)
+
+    return {
+        "CADDYFILE": caddyfile,
+        "SITE_ADDRESS": site_address,
+        "ACME_EMAIL": args.acme_email,
+        "DJANGO_SECRET_KEY": secret_key,
+        "DJANGO_ALLOWED_HOSTS": ",".join(allowed_hosts),
+        "DJANGO_CSRF_TRUSTED_ORIGINS": ",".join(csrf_origins),
+        "GUNICORN_WORKERS": str(args.gunicorn_workers),
+        "BACKEND_PORT": str(args.backend_port),
+        "HTTP_PORT": str(args.http_port),
+        "HTTPS_PORT": str(args.https_port),
+    }
+
+
+def render(env: dict[str, str], internet: bool) -> str:
+    """Render the env dict into a commented .env file."""
+    mode = "internet / Let's Encrypt" if internet else "local / self-signed"
+    lines = [
+        f"# Generated by generate-env.py ({mode}).",
+        "# `podman compose` reads this automatically.",
+        "",
+        "# --- TLS / hostname (Caddy) ---",
+        f"CADDYFILE={env['CADDYFILE']}",
+        f"SITE_ADDRESS={env['SITE_ADDRESS']}",
+        f"ACME_EMAIL={env['ACME_EMAIL']}",
+        "",
+        "# --- Django ---",
+        f"DJANGO_SECRET_KEY={env['DJANGO_SECRET_KEY']}",
+        "# Hosts Django answers for (port-independent; no :443 needed).",
+        f"DJANGO_ALLOWED_HOSTS={env['DJANGO_ALLOWED_HOSTS']}",
+        "# Full browser origins for CSRF (scheme+host, port only if non-standard).",
+        f"DJANGO_CSRF_TRUSTED_ORIGINS={env['DJANGO_CSRF_TRUSTED_ORIGINS']}",
+        f"GUNICORN_WORKERS={env['GUNICORN_WORKERS']}",
+        "",
+        "# --- Ports ---",
+        "# Port gunicorn listens on / Caddy proxies to (backend:<BACKEND_PORT>).",
+        f"BACKEND_PORT={env['BACKEND_PORT']}",
+        "# Public ports Caddy publishes.",
+        f"HTTP_PORT={env['HTTP_PORT']}",
+        f"HTTPS_PORT={env['HTTPS_PORT']}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Build and write the .env file."""
+    args = parse_args(argv)
+    env = build_env(args)
+
+    if args.output.exists() and not args.force:
+        print(
+            f"error: {args.output} already exists. Pass --force to overwrite "
+            "(this replaces the existing SECRET_KEY).",
+            file=sys.stderr,
+        )
+        return 1
+
+    args.output.write_text(render(env, internet=bool(args.domain)), encoding="utf-8")
+
+    redacted = dict(env)
+    redacted["DJANGO_SECRET_KEY"] = "***generated***"
+    print(f"Wrote {args.output}:")
+    for key, value in redacted.items():
+        print(f"  {key}={value}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,38 @@
+# Caddy config for LOCAL deployment with a self-signed certificate.
+#
+# Caddy's internal CA issues the cert (`tls internal`), so no ACME/Let's Encrypt
+# and no email are involved. HTTP/HTTPS ports default to 80/443 but can be
+# overridden (e.g. 8080/8443) to avoid binding privileged ports while testing.
+#
+# The SPA is served from /srv/www; everything the backend owns (/api, /admin and
+# Django's own /static assets served by WhiteNoise) is reverse-proxied to the
+# backend container over the podman network.
+
+{
+	# HTTP/HTTPS listen ports. Default to 80/443; testing can override them with
+	# high ports (e.g. 8080/8443) to avoid binding privileged ports.
+	http_port {$HTTP_PORT:80}
+	https_port {$HTTPS_PORT:443}
+}
+
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	# Force Caddy's internal CA -> self-signed certificate.
+	tls internal
+
+	# API, Django admin and Django-served static assets go to the backend.
+	# Match both the bare path (e.g. /api) and everything under it (/api/*).
+	@backend path /api /api/* /admin /admin/* /static/*
+	handle @backend {
+		reverse_proxy backend:{$BACKEND_PORT:8000}
+	}
+
+	# Everything else is the single-page app; unknown paths fall back to
+	# index.html so client-side routing works.
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
+}

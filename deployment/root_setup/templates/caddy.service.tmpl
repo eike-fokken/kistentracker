@@ -1,0 +1,30 @@
+[Unit]
+Description=Caddy reverse proxy ({{CONTAINER_NAME}}) via Podman, socket-activated
+Requires={{CONTAINER_NAME}}.socket
+After={{CONTAINER_NAME}}.socket{{AFTER_EXTRA}}
+{{WANTS_LINE}}
+[Service]
+Type=notify
+NotifyAccess=all
+{{USER_GROUP_LINES}}{{RUNTIME_ENV_LINE}}Restart=on-failure
+TimeoutStartSec=300
+# The sockets bound by {{CONTAINER_NAME}}.socket are inherited from systemd and
+# forwarded into the container by Podman (LISTEN_FDS / LISTEN_PID). No -p/ports
+# are published here; the listeners come exclusively from the socket unit.
+ExecStart={{PODMAN}} run \
+	--replace \
+	--rm \
+	--name {{CONTAINER_NAME}} \
+	--network {{NETWORK}} \
+	--sdnotify=conmon \
+	-v {{CADDYFILE_HOST_PATH}}:/etc/caddy/Caddyfile:ro \
+	-v {{FRONTEND_VOLUME}}:/srv/www:ro \
+	-v {{CADDY_DATA_VOLUME}}:/data \
+	-v {{CADDY_CONFIG_VOLUME}}:/config \
+	-e SITE_ADDRESS={{SITE_ADDRESS}} \
+	-e BACKEND_PORT={{BACKEND_PORT}} \
+	{{IMAGE}}
+ExecStop={{PODMAN}} stop --ignore --time 10 {{CONTAINER_NAME}}
+
+[Install]
+WantedBy={{SERVICE_WANTEDBY}}

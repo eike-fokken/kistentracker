@@ -1,0 +1,32 @@
+# Caddy config for INTERNET deployment with a Let's Encrypt certificate.
+#
+# Requires:
+#   * SITE_ADDRESS set to your public domain (e.g. rentals.example.com),
+#   * ACME_EMAIL set to a contact address (Let's Encrypt requires it here),
+#   * public DNS for the domain and reachable ports 80 + 443.
+#
+# Caddy obtains and auto-renews the certificate on first start.
+
+{
+	# Contact address for Let's Encrypt (must be non-empty for this config).
+	email {$ACME_EMAIL}
+}
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# API, Django admin and Django-served static assets go to the backend.
+	# Match both the bare path (e.g. /api) and everything under it (/api/*).
+	@backend path /api /api/* /admin /admin/* /static/*
+	handle @backend {
+		reverse_proxy backend:{$BACKEND_PORT:8000}
+	}
+
+	# Everything else is the single-page app; unknown paths fall back to
+	# index.html so client-side routing works.
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
+}

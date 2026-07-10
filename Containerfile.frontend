@@ -1,0 +1,4 @@
+FROM docker.io/nginx:alpine
+COPY frontend/nginx.conf /etc/nginx/nginx.conf
+COPY frontend-dist/ /usr/share/nginx/html/
+COPY frontend-dist/nginx-default.conf /etc/nginx/conf.d/default.conf

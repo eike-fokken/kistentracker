@@ -1,0 +1,50 @@
+{
+    admin unix//run/admin.sock
+}
+
+http:// {
+    bind fd/3
+    handle_path /static* {
+        root * /srv/static
+        file_server
+    }
+
+    handle /api/* {
+        reverse_proxy dbtrials-backend:8000
+    }
+
+    handle /admin* {
+        reverse_proxy dbtrials-backend:8000
+    }
+
+    handle {
+        reverse_proxy dbtrials-frontend:80
+    }
+
+    log
+    // redir https://{host}{uri}
+}
+
+https:// {
+    bind fd/4
+    tls /etc/caddy/certs/dbtrials.pem /etc/caddy/certs/dbtrials-key.pem
+
+    handle_path /static* {
+        root * /srv/static
+        file_server
+    }
+
+    handle /api/* {
+        reverse_proxy dbtrials-backend:8000
+    }
+
+    handle /admin* {
+        reverse_proxy dbtrials-backend:8000
+    }
+
+    handle {
+        reverse_proxy dbtrials-frontend:80
+    }
+
+    log
+}

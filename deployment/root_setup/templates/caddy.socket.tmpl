@@ -1,0 +1,15 @@
+[Unit]
+Description=Caddy HTTP/HTTPS socket ({{CONTAINER_NAME}}) for socket-activated Podman
+
+[Socket]
+# A single socket unit with two streams. Order matters: the first ListenStream
+# is handed to the container as fd/3, the second as fd/4. The Caddyfile binds
+# those descriptors accordingly (see {{CADDYFILE_BASENAME}}).
+ListenStream={{HTTP_PORT}}
+ListenStream={{HTTPS_PORT}}
+BindIPv6Only=both
+# Deliver the activated sockets to this service.
+Service={{CONTAINER_NAME}}.service
+
+[Install]
+WantedBy=sockets.target

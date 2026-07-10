@@ -1,0 +1,65 @@
+[project]
+name = "dbtrials"
+version = "0.1.0"
+description = "Trial for web development with vibe coding"
+authors = [
+    {name = "Eike Fokken",email = "eike.fokken@de.abb.com"}
+]
+requires-python = ">=3.13,<3.14.0"
+
+dependencies = [
+    "django (>=6.0.6,<7.0.0)",
+    "django-ninja (>=1.6.2,<2.0.0)",
+    "django-cors-headers (>=4.9.0,<5.0.0)",
+    "django-ninja-jwt (>=5.4.4,<6.0.0)",
+    "gunicorn (>=23.0.0,<24.0.0)",
+    "whitenoise (>=6.12.0,<7.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "django-stubs[compatible-mypy] (>=6.0.6,<7.0.0)",
+    "python-lsp-server[all] (>=1.14.0,<2.0.0)",
+    "pylsp-mypy (>=0.7.3,<0.8.0)",
+    "black (>=26.5.1,<27.0.0)",
+    "isort (>=8.0.1,<9.0.0)",
+    "pylint (>=4.0.6,<5.0.0)",
+    "pylint-django (>=2.7.0,<3.0.0)",
+]
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main", "pydantic.mypy"]
+mypy_path = "dbtrials"
+
+check_untyped_defs = true
+warn_unused_ignores = true
+disable_error_code = ["type-abstract"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = false
+init_typed = false
+warn_required_dynamic_aliases = true
+
+
+[tool.django-stubs]
+django_settings_module = "dbtrials.settings"
+
+[tool.isort]
+profile = "black"
+
+[tool.pylint]
+load-plugins = ["pylint_django"]
+django-settings-module = "dbtrials.settings"
+ignore-paths = ["^.*/migrations/.*$", "^.*/tests/.*$"]
+
+[tool.pylint."messages control"]
+disable = [
+    "line-too-long",
+    "missing-module-docstring",
+    "R",
+]

@@ -1,0 +1,50 @@
+# Socket-activated Caddy configuration.
+#
+# The HTTP and HTTPS listeners are NOT opened by Caddy itself. systemd
+# ({{CONTAINER_NAME}}.socket) binds ports {{HTTP_PORT}} and {{HTTPS_PORT}} and
+# passes the sockets to the container as file descriptors:
+#   * fd/3 = first ListenStream  (port {{HTTP_PORT}}, HTTP)
+#   * fd/4 = second ListenStream (port {{HTTPS_PORT}}, HTTPS)
+#
+# The SPA is served from /srv/www; /api, /admin and Django's /static assets are
+# reverse-proxied to the backend over the podman network.
+
+{
+	# systemd owns the HTTP listener, so disable Caddy's own auto HTTP->HTTPS
+	# redirect server; an explicit redirect server bound to fd/3 is defined below.
+	auto_https disable_redirects
+{{EMAIL_LINE}}}
+
+# HTTP arrives on the first socket-activated descriptor -> redirect to HTTPS.
+http://{{SITE_ADDRESS}} {
+	bind fd/3 {
+		protocols h1
+	}
+	redir https://{{REDIR_HOSTPORT}}{uri} permanent
+}
+
+# HTTPS arrives on the second socket-activated descriptor.
+https://{{SITE_ADDRESS}} {
+	# The activated fd is a TCP stream socket, so restrict to h1+h2; HTTP/3
+	# (QUIC/UDP) cannot run over a socket-activated stream fd.
+	bind fd/4 {
+		protocols h1 h2
+	}
+{{TLS_LINE}}
+	encode zstd gzip
+
+	# API, Django admin and Django-served static assets go to the backend.
+	# Match both the bare path (e.g. /api) and everything under it (/api/*).
+	@backend path /api /api/* /admin /admin/* /static/*
+	handle @backend {
+		reverse_proxy backend:{{BACKEND_PORT}}
+	}
+
+	# Everything else is the single-page app; unknown paths fall back to
+	# index.html so client-side routing works.
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,7 @@
+# Temporary smoke-test override: map Caddy to unprivileged host ports so the
+# stack runs under rootless Podman without adjusting sysctl. Not committed.
+services:
+  caddy:
+    ports:
+      - "8080:80"
+      - "8443:443"

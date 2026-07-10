@@ -1,0 +1,45 @@
+[flake8]
+exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,_old,dummy*,tests/playground
+per-file-ignores = __init__.py:F401
+
+ignore =
+       D,
+       E203,
+       # whitespace before ':'
+       E265,
+       # Block comment should start with '# '
+       E266,
+       # too many leading '#' for block comment
+       E501,
+       # too long lines
+       D200,
+       # One-line docstring should fit on one line with quotes.
+       D100,
+       # Missing Docstring in public module
+       D101,
+       # Missing Docstring in public class
+       D102,
+       # Missing Docstring in public method
+       D103,
+       # Missing Docstring in public function
+       D107,
+       # Missing Docstring in __init__
+       D202,
+       # No blank lines allowed after function docstring
+       W503,
+       # Line break occurred before a binary operator
+
+select =
+       F,
+       # D100,
+       # Missing Docstring in public module
+       # D101,
+       # Missing Docstring in public class
+       # D102,
+       # Missing Docstring in public method
+       # D107,
+       # Missing Docstring in __init__
+       # D202,
+       # No blank lines allowed after function docstring
+
+max-line-length = 99

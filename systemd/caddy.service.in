@@ -1,0 +1,13 @@
+[Unit]
+Description=Rootless Caddy container for dbtrials (systemd socket)
+Requires=caddy.socket
+After=caddy.socket
+
+[Service]
+User=1006
+StandardOutput=journal
+StandardError=journal
+ExecStart=/usr/bin/podman run --rm --name dbtrials-caddy --preserve-fds=2 --network dbtrials_dbtrials-net -v dbtrials_caddyfile:/etc/caddy:ro $CERT_VOLUME -v dbtrials_staticfiles:/srv/static:ro docker.io/caddy:2
+
+
+
