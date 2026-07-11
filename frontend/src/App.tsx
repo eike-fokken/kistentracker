@@ -396,7 +396,7 @@ export default function App() {
             {groups.length > 0 && (
               <GroupsTable
                 groups={groups}
-                itemTypes={itemTypes}
+                itemTypes={itemTypes.filter((it) => it.item_class !== "consumable")}
                 showPackstreet={searching}
                 onOpenOverview={(group) => {
                   window.location.hash = `/group/${group.id}`;
