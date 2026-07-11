@@ -3,9 +3,12 @@
 NEVER edit files outside this directory!
 IGNORE the deployment directory!
 
+NEVER use `uv` and never suggest to use `uv`. This project exclusively uses `poetry`.
+
 ## Environment
 
 **Python version management** uses Poetry (`pyproject.toml` + `poetry.lock` at repo root). Python dependencies are defined in `pyproject.toml` under `[project]` and `[dependency-groups]`. To run Django management commands, use `poetry run` (which reads Poetry's `pyproject.toml` directly):
+
 
 ```
 cd dbtrials && poetry run manage.py <command>
