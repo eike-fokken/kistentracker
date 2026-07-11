@@ -318,7 +318,7 @@ export default function App() {
                 type="search"
                 className="groups__search"
                 value={search}
-                placeholder="Gruppenname oder -nummer suchen…"
+                placeholder="Gruppenname oder -ID suchen…"
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Gruppen durchsuchen"
               />

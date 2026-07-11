@@ -189,29 +189,13 @@ export function GroupOverview({
 
   async function openCorrection() {
     setShowCorrection(true);
+    setAllActions(null);
     setCorrectionActions(null);
     setCorrectionError(null);
     setDeleteError(null);
-    await loadCorrectionActions();
-  }
-
-  function filterActionsForDay(actions: RecentAction[], day: Date): RecentAction[] {
-    const dayStart = new Date(day);
-    const dayEnd = new Date(day);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-    return actions.filter((a) => {
-      const ts = new Date(a.timestamp);
-      return ts >= dayStart && ts < dayEnd;
-    });
-  }
-
-  async function loadCorrectionActions() {
     setCorrectionLoading(true);
-    setCorrectionError(null);
     try {
-      if (isAdmin && allActions !== null) {
-        setCorrectionActions(filterActionsForDay(allActions, correctionDay));
-      } else if (isAdmin) {
+      if (isAdmin) {
         const actions = await listRecentActions(groupId);
         setAllActions(actions);
         setCorrectionActions(filterActionsForDay(actions, correctionDay));
@@ -225,6 +209,16 @@ export function GroupOverview({
     } finally {
       setCorrectionLoading(false);
     }
+  }
+
+  function filterActionsForDay(actions: RecentAction[], day: Date): RecentAction[] {
+    const dayStart = new Date(day);
+    const dayEnd = new Date(day);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    return actions.filter((a) => {
+      const ts = new Date(a.timestamp);
+      return ts >= dayStart && ts < dayEnd;
+    });
   }
 
   function changeCorrectionDay(delta: number) {
@@ -243,7 +237,20 @@ export function GroupOverview({
       const updated = await deleteAction(groupId, actionId);
       onGroupChanged(updated);
       await load();
-      await loadCorrectionActions();
+      setAllActions(null);
+      setCorrectionLoading(true);
+      setCorrectionError(null);
+      try {
+        const actions = await listRecentActions(groupId);
+        setAllActions(actions);
+        setCorrectionActions(filterActionsForDay(actions, correctionDay));
+      } catch (err) {
+        setCorrectionError(
+          err instanceof ApiError ? err.message : "Aktionen konnten nicht geladen werden.",
+        );
+      } finally {
+        setCorrectionLoading(false);
+      }
     } catch (err) {
       setDeleteError(
         err instanceof ApiError ? err.message : "Aktion konnte nicht gelöscht werden.",
@@ -277,7 +284,20 @@ export function GroupOverview({
       const updated = await updateActionQuantity(groupId, actionId, quantity);
       onGroupChanged(updated);
       await load();
-      await loadCorrectionActions();
+      setAllActions(null);
+      setCorrectionLoading(true);
+      setCorrectionError(null);
+      try {
+        const actions = await listRecentActions(groupId);
+        setAllActions(actions);
+        setCorrectionActions(filterActionsForDay(actions, correctionDay));
+      } catch (err) {
+        setCorrectionError(
+          err instanceof ApiError ? err.message : "Aktionen konnten nicht geladen werden.",
+        );
+      } finally {
+        setCorrectionLoading(false);
+      }
       setEditingId(null);
       setEditingQuantity("");
     } catch (err) {
