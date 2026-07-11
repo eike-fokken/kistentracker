@@ -3,6 +3,16 @@
 NEVER edit files outside this directory!
 IGNORE the deployment directory!
 
+## Environment
+
+**Python version management** uses Poetry (`pyproject.toml` + `poetry.lock` at repo root). Python dependencies are defined in `pyproject.toml` under `[project]` and `[dependency-groups]`. To run Django management commands, use `poetry run` (which reads Poetry's `pyproject.toml` directly):
+
+```
+cd dbtrials && poetry run manage.py <command>
+```
+
+For example: `poetry run manage.py test`, `poetry run manage.py migrate`, `poetry run manage.py check`, `poetry run manage.py createsuperuser`.
+
 ## Project Overview
 
 **Kistentracker** (German: "crate tracker") is a rental/inventory tracking system for cooking camps. It tracks which items (e.g. computers, flipcharts) are rented by which cooking groups stationed at packstreets (physical streets/areas). The stack is a Django REST API backend + React SPA frontend.
@@ -108,4 +118,4 @@ All env-var driven: `SECRET_KEY`, `DJANGO_DEBUG`, `ALLOWED_HOSTS`, `DJANGO_DB_PA
 - **Debounced search:** 250ms debounce on the group search input.
 - **Stock history:** `GET /groups/{id}/history` returns per-item-type time-series data (cumulative quantity after each action), rendered as Recharts line charts with stepAfter interpolation.
 - **CSV import:** Heuristic header detection; skips rows with too many columns; requires internal_id and group_name columns.
-- **Create superuser:** `cd dbtrials && uv run manage.py createsuperuser`
+- **Create superuser:** `cd dbtrials && poetry run manage.py createsuperuser`
