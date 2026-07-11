@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from django.contrib.auth import authenticate as django_authenticate
@@ -785,42 +785,28 @@ def change_quantity(
 def recent_actions(
     request: HttpRequest,
     group_id: int,
-    since: str | None = Query(None),
-    until: str | None = Query(None),
 ) -> list[dict[str, Any]]:
     """List recent rental actions for the correction/deletion dialog.
 
     Regular users: always restricted to their own actions from the last
-    10 minutes, regardless of query parameters.
+    10 minutes.
 
-    Admins: may optionally specify ``since`` and ``until`` (ISO 8601) to
-    widen the timeframe. Defaults to the last 10 minutes. Admin results
-    include actions from all users.
+    Admins: see all actions from all users for all time. Day filtering
+    is handled client-side.
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
     user = getattr(request, "auth")
     is_admin = getattr(user, "is_admin", False)
 
-    cutoff = timezone.now() - timedelta(minutes=10)
+    qs = group.actions.select_related("user")
 
     if is_admin:
-        try:
-            since_dt = datetime.fromisoformat(since) if since else cutoff
-        except (ValueError, TypeError):
-            since_dt = cutoff
-        try:
-            until_dt = datetime.fromisoformat(until) if until else timezone.now()
-        except (ValueError, TypeError):
-            until_dt = timezone.now()
+        pass
     else:
-        since_dt = cutoff
-        until_dt = timezone.now()
-
-    qs = group.actions.select_related("user")
-    qs = qs.filter(timestamp__gte=since_dt, timestamp__lte=until_dt)
-
-    if not is_admin:
+        cutoff = timezone.now() - timedelta(minutes=10)
+        qs = qs.filter(timestamp__gte=cutoff, timestamp__lte=timezone.now())
         qs = qs.filter(user=user)
+        qs = qs[:100]
 
     return [
         {
@@ -831,7 +817,7 @@ def recent_actions(
             "username": action.user.get_username() if action.user else None,
             "timestamp": action.timestamp,
         }
-        for action in qs[:100]
+        for action in qs
     ]
 
 

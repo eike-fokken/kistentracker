@@ -100,8 +100,12 @@ export function GroupOverview({
   const [correctionActions, setCorrectionActions] = useState<RecentAction[] | null>(null);
   const [correctionLoading, setCorrectionLoading] = useState(false);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
-  const [correctionSince, setCorrectionSince] = useState("");
-  const [correctionUntil, setCorrectionUntil] = useState("");
+  const [correctionDay, setCorrectionDay] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+  const [allActions, setAllActions] = useState<RecentAction[] | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -191,13 +195,29 @@ export function GroupOverview({
     await loadCorrectionActions();
   }
 
+  function filterActionsForDay(actions: RecentAction[], day: Date): RecentAction[] {
+    const dayStart = new Date(day);
+    const dayEnd = new Date(day);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    return actions.filter((a) => {
+      const ts = new Date(a.timestamp);
+      return ts >= dayStart && ts < dayEnd;
+    });
+  }
+
   async function loadCorrectionActions() {
     setCorrectionLoading(true);
     setCorrectionError(null);
     try {
-      const since = isAdmin && correctionSince ? correctionSince : undefined;
-      const until = isAdmin && correctionUntil ? correctionUntil : undefined;
-      setCorrectionActions(await listRecentActions(groupId, since, until));
+      if (isAdmin && allActions !== null) {
+        setCorrectionActions(filterActionsForDay(allActions, correctionDay));
+      } else if (isAdmin) {
+        const actions = await listRecentActions(groupId);
+        setAllActions(actions);
+        setCorrectionActions(filterActionsForDay(actions, correctionDay));
+      } else {
+        setCorrectionActions(await listRecentActions(groupId));
+      }
     } catch (err) {
       setCorrectionError(
         err instanceof ApiError ? err.message : "Aktionen konnten nicht geladen werden.",
@@ -205,6 +225,15 @@ export function GroupOverview({
     } finally {
       setCorrectionLoading(false);
     }
+  }
+
+  function changeCorrectionDay(delta: number) {
+    const next = new Date(correctionDay);
+    next.setDate(next.getDate() + delta);
+    setCorrectionDay(next);
+    setCorrectionActions(
+      allActions ? filterActionsForDay(allActions, next) : null,
+    );
   }
 
   async function handleDelete(actionId: number) {
@@ -442,29 +471,44 @@ export function GroupOverview({
 
             {isAdmin && (
               <div className="modal__timeframe">
-                <label>
-                  Von
-                  <input
-                    type="datetime-local"
-                    value={correctionSince}
-                    onChange={(e) => setCorrectionSince(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Bis
-                  <input
-                    type="datetime-local"
-                    value={correctionUntil}
-                    onChange={(e) => setCorrectionUntil(e.target.value)}
-                  />
-                </label>
                 <button
                   type="button"
                   className="btn btn--ghost"
-                  onClick={() => void loadCorrectionActions()}
-                  disabled={correctionLoading}
+                  onClick={() => changeCorrectionDay(-1)}
                 >
-                  Aktualisieren
+                  ◀
+                </button>
+                <span className="modal__day-label">
+                  {correctionDay.toLocaleDateString(undefined, {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => changeCorrectionDay(1)}
+                  disabled={
+                    new Date().toDateString() === correctionDay.toDateString()
+                  }
+                >
+                  ▶
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    setCorrectionDay(today);
+                    setCorrectionActions(
+                      allActions ? filterActionsForDay(allActions, today) : null,
+                    );
+                  }}
+                >
+                  Heute
                 </button>
               </div>
             )}
@@ -474,7 +518,7 @@ export function GroupOverview({
             {deleteError && <p className="banner banner--error">{deleteError}</p>}
 
             {correctionActions && correctionActions.length === 0 && (
-              <p className="empty">Keine eigenen Aktionen in den letzten 10 Minuten.</p>
+              <p className="empty">{isAdmin ? "Keine Aktionen an diesem Tag." : "Keine eigenen Aktionen in den letzten 10 Minuten."}</p>
             )}
 
             {correctionActions && correctionActions.length > 0 && (

@@ -333,18 +333,8 @@ export function changeQuantity(
 
 export function listRecentActions(
   groupId: number,
-  since?: string,
-  until?: string,
 ): Promise<RecentAction[]> {
-  const params = new URLSearchParams();
-  if (since) {
-    params.set("since", since);
-  }
-  if (until) {
-    params.set("until", until);
-  }
-  const query = params.toString();
-  return request<RecentAction[]>(`/groups/${groupId}/recent-actions${query ? `?${query}` : ""}`);
+  return request<RecentAction[]>(`/groups/${groupId}/recent-actions`);
 }
 
 export function deleteAction(
