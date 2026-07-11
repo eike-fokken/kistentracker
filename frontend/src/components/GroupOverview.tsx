@@ -276,11 +276,9 @@ export function GroupOverview({
       {data && (
         <>
           <header className="overview__header">
-            <h2>
-              <span className="overview__id">{data.internal_id}</span>
-              <span className="overview__name">{data.name}</span>
-              <span className="overview__subtitle">{data.packstreet.name}</span>
-            </h2>
+            <span className="overview__id">{data.internal_id}</span>
+            <span className="overview__name">{data.name}</span>
+            <span className="overview__subtitle">{data.packstreet.name}</span>
           </header>
 
           <div className="overview__actions">
