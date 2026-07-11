@@ -178,54 +178,53 @@ const [saving, setSaving] = useState(false);
       {data && (
         <>
           <header className="overview__header">
-            <div>
-              <h2>
-                {data.name}{" "}
-                <span className="overview__number">#{data.internal_id}</span>
-              </h2>
-              <p className="overview__subtitle">{data.packstreet.name}</p>
-            </div>
-            <div className="overview__actions">
-              {isAdmin && !editing && (
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={startEdit}
-                >
-Bearbeiten
-                </button>
-              )}
+            <h2>
+              <span className="overview__id">{data.internal_id}</span>
+              <span className="overview__name">{data.name}</span>
+              <span className="overview__subtitle">{data.packstreet.name}</span>
+            </h2>
+          </header>
+
+          <div className="overview__actions">
+            {isAdmin && !editing && (
               <button
                 type="button"
                 className="btn btn--ghost"
-                onClick={onViewHistory}
+                onClick={startEdit}
               >
-                Diagramme anzeigen
+                Bearbeiten
               </button>
-              <button
-                type="button"
-                className={`btn ${correctingConsumables ? "btn--primary" : "btn--ghost"}`}
-                onClick={() => setCorrectingConsumables((v) => !v)}
-              >
-                {correctingConsumables
-                  ? "Korrektur ausblenden"
-                  : "Korrektur anzeigen"}
-              </button>
-              <button
-                type="button"
-                className={`btn ${showConsumables ? "btn--ghost" : "btn--primary"}`}
-                onClick={() => {
-                const next = !showConsumables;
-                setShowConsumables(next);
-                void updateCurrentUser(next);
-              }}
-              >
-                {showConsumables
-                  ? "Verbrauchsartikel ausblenden"
-                  : "Verbrauchsartikel anzeigen"}
-              </button>
-            </div>
-          </header>
+            )}
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={onViewHistory}
+            >
+              Diagramme anzeigen
+            </button>
+            <button
+              type="button"
+              className={`btn ${correctingConsumables ? "btn--primary" : "btn--ghost"}`}
+              onClick={() => setCorrectingConsumables((v) => !v)}
+            >
+              {correctingConsumables
+                ? "Korrektur ausblenden"
+                : "Korrektur anzeigen"}
+            </button>
+            <button
+              type="button"
+              className={`btn ${showConsumables ? "btn--ghost" : "btn--primary"}`}
+              onClick={() => {
+              const next = !showConsumables;
+              setShowConsumables(next);
+              void updateCurrentUser(next);
+            }}
+            >
+              {showConsumables
+                ? "Verbrauchsartikel ausblenden"
+                : "Verbrauchsartikel anzeigen"}
+            </button>
+          </div>
 
           {isAdmin && editing && (
             <div className="card overview__edit">
