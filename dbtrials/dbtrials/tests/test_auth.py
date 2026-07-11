@@ -52,7 +52,12 @@ class CookieAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"username": USERNAME, "is_admin": True, "show_consumables": True, "selected_packstreet_id": None},
+            {
+                "username": USERNAME,
+                "is_admin": True,
+                "show_consumables": True,
+                "selected_packstreet_id": None,
+            },
         )
         self.assertIn("sessionid", response.cookies)
         self.assertTrue(response.cookies["sessionid"]["httponly"])
@@ -79,7 +84,12 @@ class CookieAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"username": USERNAME, "is_admin": True, "show_consumables": True, "selected_packstreet_id": None},
+            {
+                "username": USERNAME,
+                "is_admin": True,
+                "show_consumables": True,
+                "selected_packstreet_id": None,
+            },
         )
 
     def test_unsafe_request_requires_csrf(self) -> None:
@@ -152,7 +162,12 @@ class BearerAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"username": USERNAME, "is_admin": True, "show_consumables": True, "selected_packstreet_id": None},
+            {
+                "username": USERNAME,
+                "is_admin": True,
+                "show_consumables": True,
+                "selected_packstreet_id": None,
+            },
         )
 
     def test_anonymous_request_is_unauthorized(self) -> None:
@@ -173,7 +188,7 @@ class UserPreferencesTests(TestCase):
 
     def _login_and_csrf(self) -> str:
         """Login via cookie and return a fresh CSRF token."""
-        csrf_resp = self.client.get("/api/auth/csrf")
+        self.client.get("/api/auth/csrf")
         token = self.client.cookies["csrftoken"].value
         self.client.post(
             "/api/auth/login",
@@ -244,7 +259,9 @@ class UserPreferencesTests(TestCase):
             HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["selected_packstreet_id"], self.packstreet_b.pk)
+        self.assertEqual(
+            response.json()["selected_packstreet_id"], self.packstreet_b.pk
+        )
 
         self.user.refresh_from_db()
         self.assertEqual(self.user.selected_packstreet_id, self.packstreet_b.pk)

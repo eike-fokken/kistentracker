@@ -150,6 +150,7 @@ class UpdateActionIn(Schema):
 
     quantity: int
 
+
 class GroupOverviewOut(Schema):
     """Detailed group overview listing every possible item type."""
 

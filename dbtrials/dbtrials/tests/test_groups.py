@@ -297,7 +297,9 @@ class GroupFeatureTests(TestCase):
 
     def test_import_reports_unknown_packstreet_as_error(self) -> None:
         Packstreet.objects.create(name="Alpha")
-        response = self._import_csv("Gruppenname,Kochgruppen-ID,Packstraße\nFresh,2,Nowhere\n")
+        response = self._import_csv(
+            "Gruppenname,Kochgruppen-ID,Packstraße\nFresh,2,Nowhere\n"
+        )
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["created"], [])

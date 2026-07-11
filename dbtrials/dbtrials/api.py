@@ -851,10 +851,8 @@ def update_action(
             )
 
     with transaction.atomic():
-        rental = (
-            Rental.objects.select_for_update()
-            .filter(group=group, item_type=action.item_type)
-            .first()
+        rental = Rental.objects.select_for_update().get(
+            group=group, item_type=action.item_type
         )
         if action.action == ActionType.RENT:
             rental.quantity -= action.quantity
