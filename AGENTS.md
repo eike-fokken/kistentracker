@@ -21,7 +21,7 @@ IGNORE the deployment directory!
 |---|---|---|
 | `User` (extends `AbstractUser`) | Custom user with `role` (USER/ADMIN) and `show_consumables` preference | `role`, `show_consumables` |
 | `Packstreet` | Physical location where cooking groups are stationed | `name` (unique) |
-| `Cookinggroup` | A rental group belonging to a Packstreet | `name`, `group_number`, `packstreet` (FK, PROTECT) |
+| `Cookinggroup` | A rental group belonging to a Packstreet | `name`, `internal_id`, `packstreet` (FK, PROTECT) |
 | `ItemType` | Admin-managed item categories (rentable or consumable); `key` is a stable slug | `key`, `label`, `item_class` |
 | `Rental` | Current quantity of an item type rented by a group | `group` (FK), `item_type` (string), `quantity` — unique on (group, item_type) |
 | `RentalAction` | Audit log of every rent/return/correction | `group`, `user` (nullable), `action` (rent/return/correct), `item_type`, `quantity` (signed), `timestamp` |
@@ -107,5 +107,5 @@ All env-var driven: `SECRET_KEY`, `DJANGO_DEBUG`, `ALLOWED_HOSTS`, `DJANGO_DB_PA
 - **Consumable toggling:** Users can show/hide consumable items via a toggle; preference is persisted on the backend (`User.show_consumables`).
 - **Debounced search:** 250ms debounce on the group search input.
 - **Stock history:** `GET /groups/{id}/history` returns per-item-type time-series data (cumulative quantity after each action), rendered as Recharts line charts with stepAfter interpolation.
-- **CSV import:** Heuristic header detection; skips rows with too many columns; requires group_number and group_name columns.
+- **CSV import:** Heuristic header detection; skips rows with too many columns; requires internal_id and group_name columns.
 - **Create superuser:** `cd dbtrials && uv run manage.py createsuperuser`
