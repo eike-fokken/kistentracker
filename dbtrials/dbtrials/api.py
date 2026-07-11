@@ -467,15 +467,6 @@ def list_groups(
     return [_group_summary(group) for group in groups]
 
 
-def _looks_like_csv_header(name: str, internal_id: str, packstreet: str) -> bool:
-    """Heuristically detect a header row so it can be skipped on import."""
-    return (
-        "name" in name.lower()
-        and ("id" in internal_id.lower() or "number" in internal_id.lower())
-        and "packstra" in packstreet.lower()
-    )
-
-
 @router.get(
     "/groups/{group_id}/history",
     response=GroupHistoryOut,
@@ -556,6 +547,9 @@ def download_stock_csv(request: HttpRequest) -> HttpResponse:
     return response
 
 
+_CSV_HEADER = ("Gruppenname", "Kochgruppen-ID", "Packstraße")
+
+
 @router.post(
     "/groups/import",
     response={200: GroupImportResultOut},
@@ -566,11 +560,11 @@ def import_groups(
 ) -> tuple[int, dict[str, Any]]:
     """Bulk-create groups from a CSV file. Admin only.
 
-    Each row must provide, in order, a group name, group number and packstreet
-    name; an optional header row is ignored. A group whose name or number
+    The CSV must include a header row with the exact columns ``Gruppenname``,
+    ``Kochgruppen-ID`` and ``Packstraße``. A group whose name or internal ID
     already exists is left untouched and reported under ``skipped``. Rows that
-    omit a field or reference an unknown packstreet are reported under ``errors``.
-    Packstreets must already exist -- the import never creates them.
+    omit a field or reference an unknown packstreet are reported under
+    ``errors``. Packstreets must already exist -- the import never creates them.
     """
     try:
         text = file.read().decode("utf-8-sig")
@@ -583,24 +577,28 @@ def import_groups(
     skipped: list[dict[str, str]] = []
     errors: list[str] = []
 
-    for line_number, row in enumerate(csv.reader(io.StringIO(text)), start=1):
-        if not row or all(not cell.strip() for cell in row):
-            continue
-        if len(row) < 3:
-            errors.append(
-                f"Zeile {line_number}: 3 Spalten erwartet (Gruppenname, "
-                f"Kochgruppen-ID, Packstraße), {len(row)} gefunden."
-            )
-            continue
-        name, internal_id, packstreet_name = (
-            row[0].strip(),
-            row[1].strip(),
-            row[2].strip(),
+    reader = csv.DictReader(io.StringIO(text))
+    if reader.fieldnames is None:
+        raise HttpError(400, "Die CSV-Datei enthält keine Daten.")
+    fieldnames = [col.strip() for col in reader.fieldnames]
+
+    missing = [req for req in _CSV_HEADER if req not in fieldnames]
+    if missing:
+        known = ", ".join(fieldnames)
+        need = ", ".join(missing)
+        raise HttpError(
+            400,
+            f"Die Kopfzeile der CSV-Datei muss die Spalten {need} enthalten. "
+            f"Erkannt wurden: {known}.",
         )
-        if line_number == 1 and _looks_like_csv_header(
-            name, internal_id, packstreet_name
-        ):
+
+    for row in reader:
+        line_number = reader.line_num
+        if not any(v.strip() for v in row.values()):
             continue
+        name = (row.get("Gruppenname") or "").strip()
+        internal_id = (row.get("Kochgruppen-ID") or "").strip()
+        packstreet_name = (row.get("Packstraße") or "").strip()
         if not name or not internal_id or not packstreet_name:
             errors.append(
                 f"Zeile {line_number}: Gruppenname, Kochgruppen-ID und Packstraße "

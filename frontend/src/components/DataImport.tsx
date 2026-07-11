@@ -72,7 +72,6 @@ export function DataImport({ onImported }: Props) {
             <input
               ref={inputRef}
               type="file"
-              accept=".csv,text/csv"
               onChange={(e) => {
                 setFile(e.target.files?.[0] ?? null);
                 setResult(null);

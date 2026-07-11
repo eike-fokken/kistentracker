@@ -280,7 +280,11 @@ class GroupFeatureTests(TestCase):
         Packstreet.objects.create(name="Alpha")
         self._create_group("Existing", "1", Packstreet.objects.get(name="Alpha").pk)
 
-        csv_content = "name,number,packstraße\n" "Existing,99,Alpha\n" "Fresh,2,Alpha\n"
+        csv_content = (
+            "Gruppenname,Kochgruppen-ID,Packstraße\n"
+            "Existing,99,Alpha\n"
+            "Fresh,2,Alpha\n"
+        )
         response = self._import_csv(csv_content)
         self.assertEqual(response.status_code, 200, response.content)
         body = response.json()
@@ -293,7 +297,7 @@ class GroupFeatureTests(TestCase):
 
     def test_import_reports_unknown_packstreet_as_error(self) -> None:
         Packstreet.objects.create(name="Alpha")
-        response = self._import_csv("Fresh,2,Nowhere\n")
+        response = self._import_csv("Gruppenname,Kochgruppen-ID,Packstraße\nFresh,2,Nowhere\n")
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["created"], [])
