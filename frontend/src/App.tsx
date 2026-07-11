@@ -8,6 +8,7 @@ import {
   listGroups,
   listItemTypes,
   logout,
+  updateCurrentUser,
 } from "./api";
 import { LOGOUT_EVENT } from "./auth";
 import type { CurrentUser, GroupSummary, ItemTypeDef, Packstreet } from "./types";
@@ -70,6 +71,9 @@ export default function App() {
     setIsAdmin(user.is_admin);
     setUsername(user.username);
     setShowConsumables(user.show_consumables);
+    if (user.selected_packstreet_id !== null) {
+      setSelectedPackstreetId(user.selected_packstreet_id);
+    }
   }, []);
 
   // Log the user out when the session expires (refresh failed).
@@ -169,7 +173,7 @@ export default function App() {
   }, [debouncedSearch, selectedPackstreetId]);
 
   useEffect(() => {
-    if (authed) {
+    if (authed && selectedPackstreetId !== null) {
       void refresh();
     }
   }, [authed, refresh, reloadNonce]);
@@ -341,7 +345,10 @@ export default function App() {
                         ? "packstreet-tab is-active"
                         : "packstreet-tab"
                     }
-                    onClick={() => setSelectedPackstreetId(p.id)}
+                    onClick={() => {
+                      setSelectedPackstreetId(p.id);
+                      void updateCurrentUser(undefined, p.id);
+                    }}
                   >
                     {p.name}
                   </button>

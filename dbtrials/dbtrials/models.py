@@ -53,6 +53,14 @@ class User(AbstractUser):
         default=True,
     )
 
+    selected_packstreet = ForeignKey(
+        "Packstreet",
+        null=True,
+        blank=True,
+        on_delete=SET_NULL,
+        related_name="+",
+    )
+
     objects = UserManager()  # type: ignore[misc]
 
     @property

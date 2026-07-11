@@ -5,6 +5,7 @@ export interface CurrentUser {
   username: string;
   is_admin: boolean;
   show_consumables: boolean;
+  selected_packstreet_id: number | null;
 }
 
 /** The key identifying an item type (matches the backend `ItemType.key`). */

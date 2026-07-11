@@ -32,7 +32,7 @@ For example: `poetry run manage.py test`, `poetry run manage.py migrate`, `poetr
 
 | Model | Purpose | Key Fields |
 |---|---|---|
-| `User` (extends `AbstractUser`) | Custom user with `role` (USER/ADMIN) and `show_consumables` preference | `role`, `show_consumables` |
+| `User` (extends `AbstractUser`) | Custom user with `role` (USER/ADMIN), `show_consumables` preference, and `selected_packstreet` for persisted tab selection | `role`, `show_consumables`, `selected_packstreet` |
 | `Packstreet` | Physical location where cooking groups are stationed | `name` (unique) |
 | `Cookinggroup` | A rental group belonging to a Packstreet | `name`, `internal_id`, `packstreet` (FK, PROTECT) |
 | `ItemType` | Admin-managed item categories (rentable or consumable); `key` is a stable slug | `key`, `label`, `item_class` |

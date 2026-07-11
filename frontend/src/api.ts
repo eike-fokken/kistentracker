@@ -141,11 +141,19 @@ export function getCurrentUser(): Promise<CurrentUser> {
 }
 
 export function updateCurrentUser(
-  show_consumables: boolean,
+  show_consumables?: boolean,
+  selected_packstreet_id?: number | null,
 ): Promise<CurrentUser> {
+  const body: Record<string, unknown> = {};
+  if (show_consumables !== undefined) {
+    body.show_consumables = show_consumables;
+  }
+  if (selected_packstreet_id !== undefined) {
+    body.selected_packstreet_id = selected_packstreet_id;
+  }
   return request<CurrentUser>("/me", {
     method: "PATCH",
-    body: JSON.stringify({ show_consumables }),
+    body: JSON.stringify(body),
   });
 }
 

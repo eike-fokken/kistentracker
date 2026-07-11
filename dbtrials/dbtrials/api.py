@@ -187,6 +187,7 @@ def cookie_login(request: HttpRequest, payload: LoginIn) -> tuple[int, dict[str,
         "username": user.get_username(),
         "is_admin": user.is_admin,
         "show_consumables": user.show_consumables,
+        "selected_packstreet_id": user.selected_packstreet_id,
     }
 
 
@@ -214,6 +215,7 @@ def current_user(request: HttpRequest) -> dict[str, Any]:
         "username": user.get_username(),
         "is_admin": user.is_admin,
         "show_consumables": user.show_consumables,
+        "selected_packstreet_id": user.selected_packstreet_id,
     }
 
 
@@ -225,13 +227,21 @@ def current_user(request: HttpRequest) -> dict[str, Any]:
 def update_user(request: HttpRequest, payload: UserUpdateIn) -> dict[str, Any]:
     """Update the authenticated user's preferences."""
     user = getattr(request, "auth")
+    changed: list[str] = []
     if payload.show_consumables is not None:
         user.show_consumables = payload.show_consumables
-        user.save(update_fields=["show_consumables"])
+        changed.append("show_consumables")
+    if payload.selected_packstreet_id is not None:
+        packstreet = get_object_or_404(Packstreet, pk=payload.selected_packstreet_id)
+        user.selected_packstreet = packstreet
+        changed.append("selected_packstreet")
+    if changed:
+        user.save(update_fields=changed)
     return {
         "username": user.get_username(),
         "is_admin": user.is_admin,
         "show_consumables": user.show_consumables,
+        "selected_packstreet_id": user.selected_packstreet_id,
     }
 
 

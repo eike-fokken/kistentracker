@@ -11,12 +11,14 @@ class UserOut(Schema):
     username: str
     is_admin: bool
     show_consumables: bool
+    selected_packstreet_id: int | None
 
 
 class UserUpdateIn(Schema):
     """Input schema for updating user preferences."""
 
     show_consumables: bool | None = None
+    selected_packstreet_id: int | None = None
 
 
 class LoginIn(Schema):

@@ -52,7 +52,7 @@ class CookieAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"username": USERNAME, "is_admin": True, "show_consumables": True},
+            {"username": USERNAME, "is_admin": True, "show_consumables": True, "selected_packstreet_id": None},
         )
         self.assertIn("sessionid", response.cookies)
         self.assertTrue(response.cookies["sessionid"]["httponly"])
@@ -79,7 +79,7 @@ class CookieAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"username": USERNAME, "is_admin": True, "show_consumables": True},
+            {"username": USERNAME, "is_admin": True, "show_consumables": True, "selected_packstreet_id": None},
         )
 
     def test_unsafe_request_requires_csrf(self) -> None:
@@ -152,9 +152,156 @@ class BearerAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),
-            {"username": USERNAME, "is_admin": True, "show_consumables": True},
+            {"username": USERNAME, "is_admin": True, "show_consumables": True, "selected_packstreet_id": None},
         )
 
     def test_anonymous_request_is_unauthorized(self) -> None:
         response = self.client.get("/api/me")
         self.assertEqual(response.status_code, 401)
+
+
+class UserPreferencesTests(TestCase):
+    """PATCH /me endpoint for show_consumables and selected_packstreet_id."""
+
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(
+            username=USERNAME, password=PASSWORD, role="admin"
+        )
+        self.packstreet_a = Packstreet.objects.create(name="Street A")
+        self.packstreet_b = Packstreet.objects.create(name="Street B")
+        self.client = Client(enforce_csrf_checks=True)
+
+    def _login_and_csrf(self) -> str:
+        """Login via cookie and return a fresh CSRF token."""
+        csrf_resp = self.client.get("/api/auth/csrf")
+        token = self.client.cookies["csrftoken"].value
+        self.client.post(
+            "/api/auth/login",
+            data={"username": USERNAME, "password": PASSWORD},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        return self.client.cookies["csrftoken"].value
+
+    def test_patch_me_sets_selected_packstreet(self) -> None:
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={"selected_packstreet_id": self.packstreet_a.pk},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["selected_packstreet_id"], self.packstreet_a.pk)
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.selected_packstreet_id, self.packstreet_a.pk)
+
+    def test_patch_me_sets_show_consumables(self) -> None:
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={"show_consumables": False},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["show_consumables"])
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.show_consumables)
+
+    def test_patch_me_sets_both_fields_at_once(self) -> None:
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={
+                "show_consumables": False,
+                "selected_packstreet_id": self.packstreet_b.pk,
+            },
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data["show_consumables"])
+        self.assertEqual(data["selected_packstreet_id"], self.packstreet_b.pk)
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.show_consumables)
+        self.assertEqual(self.user.selected_packstreet_id, self.packstreet_b.pk)
+
+    def test_patch_me_can_switch_packstreet(self) -> None:
+        self.user.selected_packstreet = self.packstreet_a
+        self.user.save()
+
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={"selected_packstreet_id": self.packstreet_b.pk},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["selected_packstreet_id"], self.packstreet_b.pk)
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.selected_packstreet_id, self.packstreet_b.pk)
+
+    def test_patch_me_returns_persisted_values_on_refresh(self) -> None:
+        self.user.selected_packstreet = self.packstreet_a
+        self.user.show_consumables = False
+        self.user.save()
+
+        token = self._login_and_csrf()
+        response = self.client.get("/api/me", HTTP_X_CSRFTOKEN=token)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["selected_packstreet_id"], self.packstreet_a.pk)
+        self.assertFalse(data["show_consumables"])
+
+    def test_patch_me_invalid_packstreet_returns_404(self) -> None:
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={"selected_packstreet_id": 99999},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_patch_me_empty_body_is_noop(self) -> None:
+        self.user.selected_packstreet = self.packstreet_a
+        self.user.save()
+
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["selected_packstreet_id"], self.packstreet_a.pk)
+
+    def test_patch_me_requires_authentication(self) -> None:
+        csrf_resp = self.client.get("/api/auth/csrf")
+        token = self.client.cookies["csrftoken"].value
+        response = self.client.patch(
+            "/api/me",
+            data={"selected_packstreet_id": self.packstreet_a.pk},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_patch_me_requires_csrf(self) -> None:
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={"selected_packstreet_id": self.packstreet_a.pk},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
