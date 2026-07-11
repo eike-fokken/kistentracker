@@ -15,7 +15,6 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=dbtrials.settings
       - SECRET_KEY=change-me-in-production
-      - DEBUG=False
       - SESSION_COOKIE_SECURE=False
       - CSRF_COOKIE_SECURE=False
     networks:
