@@ -60,6 +60,17 @@ export type ActionType = "rent" | "return" | "correct";
 
 /** A single rental audit-log entry (matches `RentalActionOut`). */
 export interface RentalActionLog {
+  id: number;
+  action: ActionType;
+  item_type: ItemType;
+  quantity: number;
+  username: string | null;
+  timestamp: string;
+}
+
+/** A rental action shown in the correction/deletion dialog (matches `RecentActionOut`). */
+export interface RecentAction {
+  id: number;
   action: ActionType;
   item_type: ItemType;
   quantity: number;

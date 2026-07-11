@@ -95,13 +95,11 @@ class RentActionIn(Schema):
 
 
 class ChangeQuantityIn(Schema):
-    """Input schema for changing the rented quantity of an item type in a group.
+    """Input schema for renting or returning an item type in a group.
 
-    ``action`` determines the direction and the audit-log entry type:
+    ``action`` determines the direction:
       - ``RENT`` — add items. ``quantity`` must be positive.
       - ``RETURN`` — remove items. ``quantity`` must be positive.
-      - ``CORRECT`` — correct the stock for any item type. ``quantity`` may be
-        positive (add) or negative (remove).
     """
 
     item_type: str
@@ -139,6 +137,18 @@ class GroupOverviewItemOut(Schema):
 class RentalActionOut(Schema):
     """A single entry from the rental audit log."""
 
+    id: int
+    action: ActionType
+    item_type: str
+    quantity: int
+    username: str | None
+    timestamp: datetime
+
+
+class RecentActionOut(Schema):
+    """A single rental action for the correction/deletion dialog."""
+
+    id: int
     action: ActionType
     item_type: str
     quantity: int

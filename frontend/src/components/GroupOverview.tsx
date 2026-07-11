@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { ApiError, getGroupOverview, updateCurrentUser, updateGroup } from "../api";
+import {
+  ApiError,
+  deleteAction,
+  getGroupOverview,
+  listRecentActions,
+  updateCurrentUser,
+  updateGroup,
+} from "../api";
 import type {
   Packstreet,
   GroupOverview as GroupOverviewData,
   GroupSummary,
+  RecentAction,
   RentalActionLog,
 } from "../types";
 import { OverviewItemRow } from "./OverviewItemRow";
@@ -14,7 +22,7 @@ function formatTimestamp(iso: string): string {
 }
 
 function describeAction(
-  entry: RentalActionLog,
+  entry: RentalActionLog | RecentAction,
   labels: Record<string, string>,
 ) {
   const verb =
@@ -83,10 +91,18 @@ export function GroupOverview({
   const [editName, setEditName] = useState("");
   const [editNumber, setEditNumber] = useState("");
   const [editPackstreetId, setEditPackstreetId] = useState<number | "">("");
-const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [correctingConsumables, setCorrectingConsumables] = useState(false);
+  const [showCorrection, setShowCorrection] = useState(false);
   const [showConsumables, setShowConsumables] = useState(showConsumablesProp);
+
+  const [correctionActions, setCorrectionActions] = useState<RecentAction[] | null>(null);
+  const [correctionLoading, setCorrectionLoading] = useState(false);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
+  const [correctionSince, setCorrectionSince] = useState("");
+  const [correctionUntil, setCorrectionUntil] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     setShowConsumables(showConsumablesProp);
@@ -110,8 +126,6 @@ const [saving, setSaving] = useState(false);
     void load();
   }, [load]);
 
-  // After a rent/return/correct action: keep the groups table in sync (using the
-  // GroupSummary returned by the endpoint) and reload the per-item overview.
   const handleUpdated = useCallback(
     (group: GroupSummary) => {
       onGroupChanged(group);
@@ -166,6 +180,51 @@ const [saving, setSaving] = useState(false);
     }
   }
 
+  async function openCorrection() {
+    setShowCorrection(true);
+    setCorrectionActions(null);
+    setCorrectionError(null);
+    setDeleteError(null);
+    await loadCorrectionActions();
+  }
+
+  async function loadCorrectionActions() {
+    setCorrectionLoading(true);
+    setCorrectionError(null);
+    try {
+      const since = isAdmin && correctionSince ? correctionSince : undefined;
+      const until = isAdmin && correctionUntil ? correctionUntil : undefined;
+      setCorrectionActions(await listRecentActions(groupId, since, until));
+    } catch (err) {
+      setCorrectionError(
+        err instanceof ApiError ? err.message : "Aktionen konnten nicht geladen werden.",
+      );
+    } finally {
+      setCorrectionLoading(false);
+    }
+  }
+
+  async function handleDelete(actionId: number) {
+    setDeletingId(actionId);
+    setDeleteError(null);
+    try {
+      const updated = await deleteAction(groupId, actionId);
+      onGroupChanged(updated);
+      await load();
+      await loadCorrectionActions();
+    } catch (err) {
+      setDeleteError(
+        err instanceof ApiError ? err.message : "Aktion konnte nicht gelöscht werden.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  const labels = data
+    ? Object.fromEntries(data.items.map((i) => [i.item_type, i.label]))
+    : {};
+
   return (
     <section className="overview">
       <button type="button" className="link" onClick={onBack}>
@@ -204,21 +263,19 @@ const [saving, setSaving] = useState(false);
             </button>
             <button
               type="button"
-              className={`btn ${correctingConsumables ? "btn--primary" : "btn--ghost"}`}
-              onClick={() => setCorrectingConsumables((v) => !v)}
+              className={`btn ${showCorrection ? "btn--primary" : "btn--ghost"}`}
+              onClick={() => showCorrection ? setShowCorrection(false) : openCorrection()}
             >
-              {correctingConsumables
-                ? "Korrektur ausblenden"
-                : "Korrektur anzeigen"}
+              {showCorrection ? "Korrektur schließen" : "Korrektur"}
             </button>
             <button
               type="button"
               className={`btn ${showConsumables ? "btn--ghost" : "btn--primary"}`}
               onClick={() => {
-              const next = !showConsumables;
-              setShowConsumables(next);
-              void updateCurrentUser(next);
-            }}
+                const next = !showConsumables;
+                setShowConsumables(next);
+                void updateCurrentUser(next);
+              }}
             >
               {showConsumables
                 ? "Verbrauchsartikel ausblenden"
@@ -296,14 +353,13 @@ const [saving, setSaving] = useState(false);
               {data.items
                 .filter((it) => showConsumables || it.item_class !== "consumable")
                 .map((item) => (
-                <OverviewItemRow
-                  key={item.item_type}
-                  groupId={groupId}
-                  item={item}
-                  onUpdated={handleUpdated}
-                  showCorrect={correctingConsumables}
-                />
-              ))}
+                  <OverviewItemRow
+                    key={item.item_type}
+                    groupId={groupId}
+                    item={item}
+                    onUpdated={handleUpdated}
+                  />
+                ))}
             </tbody>
           </table>
 
@@ -320,12 +376,7 @@ const [saving, setSaving] = useState(false);
                   >
                     <span className="action-log__desc">
                       <strong>{entry.username ?? "(unbekannter Benutzer)"}</strong>{" "}
-                      {describeAction(
-                        entry,
-                        Object.fromEntries(
-                          data.items.map((i) => [i.item_type, i.label]),
-                        ),
-                      )}
+                      {describeAction(entry, labels)}
                     </span>
                     <time className="action-log__time" dateTime={entry.timestamp}>
                       {formatTimestamp(entry.timestamp)}
@@ -336,6 +387,89 @@ const [saving, setSaving] = useState(false);
             )}
           </section>
         </>
+      )}
+
+      {showCorrection && (
+        <div className="modal-overlay" onClick={() => setShowCorrection(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2>Korrektur</h2>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setShowCorrection(false)}
+              >
+                Schließen
+              </button>
+            </div>
+
+            {isAdmin && (
+              <div className="modal__timeframe">
+                <label>
+                  Von
+                  <input
+                    type="datetime-local"
+                    value={correctionSince}
+                    onChange={(e) => setCorrectionSince(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Bis
+                  <input
+                    type="datetime-local"
+                    value={correctionUntil}
+                    onChange={(e) => setCorrectionUntil(e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => void loadCorrectionActions()}
+                  disabled={correctionLoading}
+                >
+                  Aktualisieren
+                </button>
+              </div>
+            )}
+
+            {correctionLoading && <p className="empty">Ladevorgang…</p>}
+            {correctionError && <p className="banner banner--error">{correctionError}</p>}
+            {deleteError && <p className="banner banner--error">{deleteError}</p>}
+
+            {correctionActions && correctionActions.length === 0 && (
+              <p className="empty">Keine eigenen Aktionen in den letzten 10 Minuten.</p>
+            )}
+
+            {correctionActions && correctionActions.length > 0 && (
+              <ul className="action-log__list correction__list">
+                {correctionActions.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className={`action-log__item action-log__item--${entry.action}`}
+                  >
+                    <span className="action-log__desc">
+                      <strong>{entry.username ?? "(unbekannter Benutzer)"}</strong>{" "}
+                      {describeAction(entry, labels)}
+                    </span>
+                    <div className="correction__row-right">
+                      <time className="action-log__time" dateTime={entry.timestamp}>
+                        {formatTimestamp(entry.timestamp)}
+                      </time>
+                      <button
+                        type="button"
+                        className="btn btn--danger"
+                        onClick={() => void handleDelete(entry.id)}
+                        disabled={deletingId === entry.id}
+                      >
+                        {deletingId === entry.id ? "Löschen…" : "Löschen"}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
     </section>
   );

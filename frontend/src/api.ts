@@ -7,6 +7,7 @@ import type {
   GroupOverview,
   GroupSummary,
   ItemTypeDef,
+  RecentAction,
   RentAction,
 } from "./types";
 import { notifyLogout, readCsrfToken } from "./auth";
@@ -327,5 +328,30 @@ export function changeQuantity(
   return request<GroupSummary>(`/groups/${groupId}/change-quantity`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function listRecentActions(
+  groupId: number,
+  since?: string,
+  until?: string,
+): Promise<RecentAction[]> {
+  const params = new URLSearchParams();
+  if (since) {
+    params.set("since", since);
+  }
+  if (until) {
+    params.set("until", until);
+  }
+  const query = params.toString();
+  return request<RecentAction[]>(`/groups/${groupId}/recent-actions${query ? `?${query}` : ""}`);
+}
+
+export function deleteAction(
+  groupId: number,
+  actionId: number,
+): Promise<GroupSummary> {
+  return request<GroupSummary>(`/groups/${groupId}/actions/${actionId}`, {
+    method: "DELETE",
   });
 }

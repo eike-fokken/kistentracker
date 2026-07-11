@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import timedelta
 from typing import Any
 
 from django.contrib.auth import authenticate as django_authenticate
@@ -9,6 +10,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError, Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 from ninja import File, Query
@@ -48,6 +50,7 @@ from dbtrials.schemas import (
     LoginIn,
     PackstreetIn,
     PackstreetOut,
+    RecentActionOut,
     RentalItemOut,
     UserOut,
     UserUpdateIn,
@@ -95,7 +98,7 @@ router = PermissionRouter()
 def _group_summary(group: Cookinggroup) -> dict[str, Any]:
     rentals = [
         RentalItemOut(item_type=r.item_type, quantity=r.quantity)
-        for r in group.rentals.filter(quantity__gt=0).order_by("item_type")
+        for r in group.rentals.order_by("item_type")
         if ItemType.objects.filter(
             key=r.item_type, item_class=ItemClass.RENTABLE
         ).exists()
@@ -123,6 +126,7 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
     ]
     recent_actions = [
         {
+            "id": action.pk,
             "action": ActionType(action.action),
             "item_type": action.item_type,
             "quantity": action.quantity,
@@ -492,7 +496,7 @@ def group_history(request: HttpRequest, group_id: int) -> dict[str, Any]:
         delta = (
             action.quantity if action.action == ActionType.RENT else -action.quantity
         )
-        running[item_type] = max(0, running[item_type] + delta)
+        running[item_type] = running[item_type] + delta
         points[item_type].append(
             {"timestamp": action.timestamp, "quantity": running[item_type]}
         )
@@ -711,11 +715,7 @@ def change_quantity(
       - ``RENT`` — add items. ``quantity`` must be positive.
       - ``RETURN`` — remove items. ``quantity`` must be positive. Blocked for
         consumable types.
-      - ``CORRECT`` — correct the stock for any item type. ``quantity`` may be
-        positive (add) or negative (remove). Never blocked by item class.
 
-    Rules enforced:
-      - Cannot remove more than the group currently has rented.
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
     if payload.quantity == 0:
@@ -728,6 +728,8 @@ def change_quantity(
         raise HttpError(400, "Ausleihe: Menge muss eine positive Zahl sein.")
     if payload.action == ActionType.RETURN and payload.quantity < 0:
         raise HttpError(400, "Rückgabe: Menge muss eine positive Zahl sein.")
+    if payload.action not in (ActionType.RENT, ActionType.RETURN):
+        raise HttpError(400, "Nur Ausleihe oder Rückgabe ist erlaubt.")
     if (
         payload.action == ActionType.RETURN
         and item_type.item_class == ItemClass.CONSUMABLE
@@ -735,42 +737,33 @@ def change_quantity(
         raise HttpError(
             400,
             "Verbrauchsartikel können nicht zurückgegeben werden — "
-            "sie werden nur ausgegeben. Nutze „correct“ für Korrekturen.",
+            "sie werden nur ausgegeben.",
         )
 
     with transaction.atomic():
-        if (
-            payload.action in (ActionType.RENT, ActionType.CORRECT)
-            and payload.quantity > 0
-        ):
-            # Positive quantity: add to the rental.
+        if payload.action == ActionType.RENT:
             new_rental, _created = Rental.objects.select_for_update().get_or_create(
                 group=group, item_type=payload.item_type
             )
             new_rental.quantity += payload.quantity
             new_rental.save(update_fields=["quantity"])
         else:
-            # Negative quantity (or positive RETURN/CORRECT): remove.
-            abs_qty = abs(payload.quantity)
+            # RETURN: remove items.
+            abs_qty = payload.quantity
             existing = (
                 Rental.objects.select_for_update()
                 .filter(group=group, item_type=payload.item_type)
                 .first()
             )
-            if existing is None:
-                raise HttpError(
-                    500,
-                    "Interner Fehler: Ausleiheintrag nicht gefunden.",
+            if existing is not None:
+                existing.quantity -= abs_qty
+                existing.save(update_fields=["quantity"])
+            else:
+                Rental.objects.create(
+                    group=group,
+                    item_type=payload.item_type,
+                    quantity=-abs_qty,
                 )
-            rented = existing.quantity
-            if abs_qty > rented:
-                raise HttpError(
-                    400,
-                    f"Kann nicht {abs_qty} Stück {payload.item_type} zurückgeben/korrigieren; "
-                    f"die Gruppe hat derzeit nur {rented} Stück ausgeliehen.",
-                )
-            existing.quantity -= abs_qty
-            existing.save(update_fields=["quantity"])
 
         RentalAction.objects.create(
             group=group,
@@ -779,6 +772,110 @@ def change_quantity(
             item_type=payload.item_type,
             quantity=payload.quantity,
         )
+    group.refresh_from_db()
+    return _group_summary(group)
+
+
+@router.get(
+    "/groups/{group_id}/recent-actions",
+    response=list[RecentActionOut],
+)
+@require_permissions(IsAuthenticated)
+def recent_actions(
+    request: HttpRequest,
+    group_id: int,
+    since: str | None = Query(None),
+    until: str | None = Query(None),
+) -> list[dict[str, Any]]:
+    """List recent rental actions for the correction/deletion dialog.
+
+    Regular users: always restricted to their own actions from the last
+    10 minutes, regardless of query parameters.
+
+    Admins: may optionally specify ``since`` and ``until`` (ISO 8601) to
+    widen the timeframe. Defaults to the last 10 minutes. Admin results
+    include actions from all users.
+    """
+    group = get_object_or_404(Cookinggroup, pk=group_id)
+    user = getattr(request, "auth")
+    is_admin = getattr(user, "is_admin", False)
+
+    cutoff = timezone.now() - timedelta(minutes=10)
+
+    if is_admin:
+        try:
+            since_dt = timezone.datetime.fromisoformat(since) if since else cutoff
+        except (ValueError, TypeError):
+            since_dt = cutoff
+        try:
+            until_dt = timezone.datetime.fromisoformat(until) if until else timezone.now()
+        except (ValueError, TypeError):
+            until_dt = timezone.now()
+    else:
+        since_dt = cutoff
+        until_dt = timezone.now()
+
+    qs = group.actions.select_related("user")
+    qs = qs.filter(timestamp__gte=since_dt, timestamp__lte=until_dt)
+
+    if not is_admin:
+        qs = qs.filter(user=user)
+
+    return [
+        {
+            "id": action.pk,
+            "action": ActionType(action.action),
+            "item_type": action.item_type,
+            "quantity": action.quantity,
+            "username": action.user.get_username() if action.user else None,
+            "timestamp": action.timestamp,
+        }
+        for action in qs[:100]
+    ]
+
+
+@router.delete(
+    "/groups/{group_id}/actions/{action_id}",
+    response=GroupSummaryOut,
+)
+@require_permissions(IsAuthenticated)
+def delete_action(
+    request: HttpRequest, group_id: int, action_id: int
+) -> dict[str, Any]:
+    """Delete a rental action and reverse its effect on the group's stock.
+
+    Regular users can only delete their own actions within a 10-minute window.
+    Admins can delete any action regardless of age or ownership.
+    """
+    group = get_object_or_404(Cookinggroup, pk=group_id)
+    action = get_object_or_404(RentalAction, pk=action_id, group=group)
+    user = getattr(request, "auth")
+    is_admin = getattr(user, "is_admin", False)
+
+    if not is_admin:
+        if action.user != user:
+            raise HttpError(403, "Du kannst nur deine eigenen Aktionen löschen.")
+        cutoff = timezone.now() - timedelta(minutes=10)
+        if action.timestamp < cutoff:
+            raise HttpError(
+                403,
+                "Aktionen können nur innerhalb von 10 Minuten gelöscht werden.",
+            )
+
+    with transaction.atomic():
+        rental = (
+            Rental.objects.select_for_update()
+            .filter(group=group, item_type=action.item_type)
+            .first()
+        )
+        if rental is not None:
+            if action.action == ActionType.RENT:
+                rental.quantity -= action.quantity
+            else:
+                rental.quantity += abs(action.quantity)
+            rental.save(update_fields=["quantity"])
+        action.delete()
+
     group.refresh_from_db()
     return _group_summary(group)
 

@@ -1,6 +1,14 @@
 import type { GroupSummary, ItemTypeDef } from "../types";
 import { quantityOf } from "../types";
 
+function QuantityCell({ value }: { value: number }) {
+  return (
+    <td className={`num ${value < 0 ? "num--negative" : ""}`}>
+      {value}
+    </td>
+  );
+}
+
 interface Props {
   groups: GroupSummary[];
   itemTypes: ItemTypeDef[];
@@ -46,9 +54,10 @@ export function GroupsTable({
             </td>
             {showPackstreet && <td>{group.packstreet.name}</td>}
             {itemTypes.map((itemType) => (
-              <td key={itemType.key} className="num">
-                {quantityOf(group, itemType.key)}
-              </td>
+              <QuantityCell
+                key={itemType.key}
+                value={quantityOf(group, itemType.key)}
+              />
             ))}
           </tr>
         ))}

@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as DjangoUserManager
-from django.core.validators import MinValueValidator
 from django.db.models import (
     CASCADE,
     PROTECT,
@@ -11,7 +10,6 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Model,
-    PositiveIntegerField,
     SlugField,
     TextChoices,
     UniqueConstraint,
@@ -143,9 +141,8 @@ class Rental(Model):
         related_name="rentals",
     )
     item_type = CharField(max_length=50)
-    quantity = PositiveIntegerField(
+    quantity = IntegerField(
         default=0,
-        validators=[MinValueValidator(0)],
     )
 
     class Meta:
