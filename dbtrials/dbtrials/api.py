@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.contrib.auth import authenticate as django_authenticate
@@ -50,7 +50,7 @@ from dbtrials.schemas import (
     LoginIn,
     PackstreetIn,
     PackstreetOut,
-    RecentActionOut,
+    RentalActionOut,
     RentalItemOut,
     UserOut,
     UserUpdateIn,
@@ -778,7 +778,7 @@ def change_quantity(
 
 @router.get(
     "/groups/{group_id}/recent-actions",
-    response=list[RecentActionOut],
+    response=list[RentalActionOut],
 )
 @require_permissions(IsAuthenticated)
 def recent_actions(
@@ -804,11 +804,11 @@ def recent_actions(
 
     if is_admin:
         try:
-            since_dt = timezone.datetime.fromisoformat(since) if since else cutoff
+            since_dt = datetime.fromisoformat(since) if since else cutoff
         except (ValueError, TypeError):
             since_dt = cutoff
         try:
-            until_dt = timezone.datetime.fromisoformat(until) if until else timezone.now()
+            until_dt = datetime.fromisoformat(until) if until else timezone.now()
         except (ValueError, TypeError):
             until_dt = timezone.now()
     else:

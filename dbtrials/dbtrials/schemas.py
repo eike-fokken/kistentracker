@@ -145,15 +145,7 @@ class RentalActionOut(Schema):
     timestamp: datetime
 
 
-class RecentActionOut(Schema):
-    """A single rental action for the correction/deletion dialog."""
 
-    id: int
-    action: ActionType
-    item_type: str
-    quantity: int
-    username: str | None
-    timestamp: datetime
 
 
 class GroupOverviewOut(Schema):
