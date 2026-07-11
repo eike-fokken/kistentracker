@@ -50,9 +50,9 @@ function ItemChart({ series }: { series: ItemHistory }) {
               dataKey="timestamp"
               tickFormatter={formatTick}
               minTickGap={24}
-              fontSize={12}
+              fontSize={14}
             />
-            <YAxis allowDecimals={false} width={32} fontSize={12} />
+            <YAxis allowDecimals={false} width={36} fontSize={14} />
             <Tooltip
               labelFormatter={(label) => formatFull(String(label))}
               formatter={(value) => [value as number, "Ausgeliehen"]}

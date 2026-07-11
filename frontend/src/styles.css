@@ -462,7 +462,7 @@ select:focus {
 
 .action-log h3 {
   margin: 0 0 0.5rem;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
 }
 
 .action-log__list {
@@ -526,13 +526,13 @@ select:focus {
 }
 
 .action-log__desc {
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .action-log__time {
   flex-shrink: 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   white-space: nowrap;
 }
 
@@ -676,12 +676,27 @@ select:focus {
 
 /* --- Group overview / history --- */
 
+.overview-table th:first-child,
+.overview-table td:first-child {
+  width: 20%;
+}
+
+.overview-table th,
+.overview-table td,
+.overview-table thead th {
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+}
+
 .history__chart {
   margin-top: 1.5rem;
 }
 
 .history__chart h3 {
   margin: 0 0 0.5rem;
-  font-size: 1rem;
+  font-size: 1.2rem;
 }
 

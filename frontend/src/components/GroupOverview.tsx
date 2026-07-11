@@ -284,7 +284,7 @@ const [saving, setSaving] = useState(false);
             </div>
           )}
 
-          <table className="groups-table">
+          <table className="groups-table overview-table">
             <thead>
               <tr>
                 <th>Artikel</th>
