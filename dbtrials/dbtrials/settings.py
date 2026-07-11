@@ -21,14 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1")
 
-ALLOWED_HOSTS: list[str] = os.environ.get(
-    "ALLOWED_HOSTS", "localhost,127.0.0.1, dbtrials.local"
-).split(",")
+ALLOWED_HOSTS: list[str] = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
 # Application definition
@@ -66,16 +64,16 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost",
     "http://127.0.0.1",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+    "http://localhost:8443",
+    "http://127.0.0.1:8443",
+] + os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "http://127.0.0.1",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://dbtrials.local",
-]
+] + os.getenv(
+    "DJANGO_CSRF_TRUSTED_ORIGINS", ""
+).split(",")
 
 # Cookie security. The JWT cookies are HttpOnly (set in api.py); the CSRF
 # cookie must stay JS-readable so the SPA can echo it as the X-CSRFToken header.
@@ -120,10 +118,12 @@ WSGI_APPLICATION = "dbtrials.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+database_path = os.getenv("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": database_path,
     }
 }
 

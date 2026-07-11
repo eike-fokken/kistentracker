@@ -6,7 +6,6 @@ WORKDIR /app
 
 # Install dependencies first for better layer caching.
 COPY frontend/package.json ./
-COPY frontend/package-lock.json* ./
 RUN npm install
 
 # Build the production bundle into /app/dist.
