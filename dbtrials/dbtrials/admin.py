@@ -42,9 +42,9 @@ class ItemTypeAdmin(admin.ModelAdmin):
 class CookinggroupAdmin(admin.ModelAdmin):
     """Admin for rental groups."""
 
-    list_display = ("group_number", "name", "packstreet")
+    list_display = ("internal_id", "name", "packstreet")
     list_filter = ("packstreet",)
-    search_fields = ("name", "group_number")
+    search_fields = ("name", "internal_id")
 
 
 @admin.register(Rental)
@@ -53,7 +53,7 @@ class RentalAdmin(admin.ModelAdmin):
 
     list_display = ("group", "item_type", "quantity")
     list_filter = ("item_type",)
-    search_fields = ("group__name", "group__group_number")
+    search_fields = ("group__name", "group__internal_id")
 
 
 @admin.register(RentalAction)
@@ -62,5 +62,5 @@ class RentalActionAdmin(admin.ModelAdmin):
 
     list_display = ("timestamp", "action", "item_type", "quantity", "group", "user")
     list_filter = ("action", "item_type")
-    search_fields = ("group__name", "group__group_number", "user__username")
+    search_fields = ("group__name", "group__internal_id", "user__username")
     readonly_fields = ("timestamp",)

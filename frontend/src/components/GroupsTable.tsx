@@ -18,7 +18,7 @@ export function GroupsTable({
     <table className="groups-table">
       <thead>
         <tr>
-          <th className="num">Nr.</th>
+          <th className="num">ID</th>
           <th>Gruppe</th>
           {showPackstreet && <th>Packstraße</th>}
           {itemTypes.map((itemType) => (
@@ -31,7 +31,7 @@ export function GroupsTable({
       <tbody>
         {groups.map((group) => (
           <tr key={group.id}>
-            <td className="num">{group.group_number}</td>
+            <td className="num">{group.internal_id}</td>
             <td>
               <button
                 type="button"

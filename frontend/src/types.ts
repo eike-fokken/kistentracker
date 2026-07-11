@@ -34,7 +34,7 @@ export interface Packstreet {
 export interface GroupSummary {
   id: number;
   name: string;
-  group_number: string;
+  internal_id: string;
   packstreet: Packstreet;
   total_items: number;
   rentals: RentalItem[];
@@ -70,7 +70,7 @@ export interface RentalActionLog {
 export interface GroupOverview {
   id: number;
   name: string;
-  group_number: string;
+  internal_id: string;
   packstreet: Packstreet;
   items: GroupOverviewItem[];
   recent_actions: RentalActionLog[];
@@ -93,14 +93,14 @@ export interface ItemHistory {
 export interface GroupHistory {
   id: number;
   name: string;
-  group_number: string;
+  internal_id: string;
   series: ItemHistory[];
 }
 
 /** A single group row processed during a CSV import (matches `GroupImportRowOut`). */
 export interface GroupImportRow {
   name: string;
-  group_number: string;
+  internal_id: string;
   packstreet: string;
 }
 

@@ -107,7 +107,7 @@ class EndpointAuthorizationTests(TestCase):
     def _group_payload(self, name: str, number: str) -> dict[str, object]:
         return {
             "name": name,
-            "group_number": number,
+            "internal_id": number,
             "packstreet_id": self.packstreet.pk,
         }
 

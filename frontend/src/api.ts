@@ -227,7 +227,7 @@ export function getGroupHistory(groupId: number): Promise<GroupHistory> {
 
 export function createGroup(payload: {
   name: string;
-  group_number: string;
+  internal_id: string;
   packstreet_id: number;
 }): Promise<GroupSummary> {
   return request<GroupSummary>("/groups", {
@@ -241,7 +241,7 @@ export function updateGroup(
   groupId: number,
   payload: {
     name: string;
-    group_number: string;
+    internal_id: string;
     packstreet_id: number;
   },
 ): Promise<GroupSummary> {

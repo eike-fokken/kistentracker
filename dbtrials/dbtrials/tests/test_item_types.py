@@ -40,7 +40,7 @@ class ItemTypeTests(TestCase):
             "/api/groups",
             data={
                 "name": name,
-                "group_number": number,
+                "internal_id": number,
                 "packstreet_id": self.packstreet.pk,
             },
             content_type="application/json",

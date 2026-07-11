@@ -63,8 +63,8 @@ export function DataImport({ onImported }: Props) {
         <>
           <p className="import__hint">
             Lade eine CSV-Datei mit einer Gruppe pro Zeile hoch:{" "}
-            <code>Gruppenname, Gruppennummer, Packstraße</code> (eine optionale
-            Kopfzeile wird ignoriert). Gruppen, deren Name oder Nummer bereits
+            <code>Gruppenname, Kochgruppen-ID, Packstraße</code> (eine optionale
+            Kopfzeile wird ignoriert). Gruppen, deren Name oder ID bereits
             existieren, bleiben unverändert. Packstraßen müssen bereits vorhanden sein.
           </p>
 
@@ -115,9 +115,9 @@ export function DataImport({ onImported }: Props) {
                   <summary>Erstellt ({result.created.length})</summary>
                   <ul className="import__list">
                     {result.created.map((row) => (
-                      <li key={`created-${row.group_number}-${row.name}`}>
+                      <li key={`created-${row.internal_id}-${row.name}`}>
                         {row.name} <span className="overview__number">
-                          #{row.group_number}
+                          #{row.internal_id}
                         </span>{" "}
                         — {row.packstreet}
                       </li>
@@ -131,9 +131,9 @@ export function DataImport({ onImported }: Props) {
                   <summary>Übersprungen — bereits vorhanden ({result.skipped.length})</summary>
                   <ul className="import__list">
                     {result.skipped.map((row) => (
-                      <li key={`skipped-${row.group_number}-${row.name}`}>
+                      <li key={`skipped-${row.internal_id}-${row.name}`}>
                         {row.name} <span className="overview__number">
-                          #{row.group_number}
+                          #{row.internal_id}
                         </span>{" "}
                         — {row.packstreet}
                       </li>

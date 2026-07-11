@@ -38,7 +38,7 @@ class GroupFeatureTests(TestCase):
     def _create_group(self, name: str, number: str, packstreet_id: int) -> Cookinggroup:
         response = self.client.post(
             "/api/groups",
-            data={"name": name, "group_number": number, "packstreet_id": packstreet_id},
+            data={"name": name, "internal_id": number, "packstreet_id": packstreet_id},
             content_type="application/json",
             HTTP_AUTHORIZATION=self.admin_header,
         )
@@ -115,7 +115,7 @@ class GroupFeatureTests(TestCase):
             "/api/groups",
             data={
                 "name": "Second",
-                "group_number": "100",
+                "internal_id": "100",
                 "packstreet_id": packstreet.pk,
             },
             content_type="application/json",
@@ -129,7 +129,7 @@ class GroupFeatureTests(TestCase):
         response = self.client.get("/api/groups", HTTP_AUTHORIZATION=self.user_header)
         self.assertEqual(response.status_code, 200)
         group = response.json()[0]
-        self.assertEqual(group["group_number"], "100")
+        self.assertEqual(group["internal_id"], "100")
         self.assertEqual(group["packstreet"]["name"], "Main")
 
     # --- Search & packstreet filter ---------------------------------------
@@ -222,19 +222,19 @@ class GroupFeatureTests(TestCase):
 
         response = self.client.put(
             f"/api/groups/{group.pk}",
-            data={"name": "New", "group_number": "2", "packstreet_id": b.pk},
+            data={"name": "New", "internal_id": "2", "packstreet_id": b.pk},
             content_type="application/json",
             HTTP_AUTHORIZATION=self.admin_header,
         )
         self.assertEqual(response.status_code, 200, response.content)
         body = response.json()
         self.assertEqual(body["name"], "New")
-        self.assertEqual(body["group_number"], "2")
+        self.assertEqual(body["internal_id"], "2")
         self.assertEqual(body["packstreet"]["name"], "Beta")
 
         group.refresh_from_db()
         self.assertEqual(group.name, "New")
-        self.assertEqual(group.group_number, "2")
+        self.assertEqual(group.internal_id, "2")
         self.assertEqual(group.packstreet_id, b.pk)
 
     def test_normal_user_cannot_update_group(self) -> None:
@@ -242,7 +242,7 @@ class GroupFeatureTests(TestCase):
         group = self._create_group("Old", "1", packstreet.pk)
         response = self.client.put(
             f"/api/groups/{group.pk}",
-            data={"name": "New", "group_number": "2", "packstreet_id": packstreet.pk},
+            data={"name": "New", "internal_id": "2", "packstreet_id": packstreet.pk},
             content_type="application/json",
             HTTP_AUTHORIZATION=self.user_header,
         )
@@ -256,7 +256,7 @@ class GroupFeatureTests(TestCase):
             f"/api/groups/{second.pk}",
             data={
                 "name": "Second",
-                "group_number": "1",
+                "internal_id": "1",
                 "packstreet_id": packstreet.pk,
             },
             content_type="application/json",
@@ -289,7 +289,7 @@ class GroupFeatureTests(TestCase):
         self.assertEqual(body["errors"], [])
         self.assertTrue(Cookinggroup.objects.filter(name="Fresh").exists())
         # The pre-existing group was left untouched (number unchanged).
-        self.assertEqual(Cookinggroup.objects.get(name="Existing").group_number, "1")
+        self.assertEqual(Cookinggroup.objects.get(name="Existing").internal_id, "1")
 
     def test_import_reports_unknown_packstreet_as_error(self) -> None:
         Packstreet.objects.create(name="Alpha")

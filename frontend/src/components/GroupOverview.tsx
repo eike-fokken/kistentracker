@@ -125,7 +125,7 @@ const [saving, setSaving] = useState(false);
       return;
     }
     setEditName(data.name);
-    setEditNumber(data.group_number);
+    setEditNumber(data.internal_id);
     setEditPackstreetId(data.packstreet.id);
     setEditError(null);
     setEditing(true);
@@ -139,7 +139,7 @@ const [saving, setSaving] = useState(false);
       return;
     }
     if (!number) {
-      setEditError("Bitte gib eine Gruppennummer ein.");
+      setEditError("Bitte gib eine Kochgruppen-ID ein.");
       return;
     }
     if (editPackstreetId === "") {
@@ -151,7 +151,7 @@ const [saving, setSaving] = useState(false);
     try {
       const updated = await updateGroup(groupId, {
         name,
-        group_number: number,
+        internal_id: number,
         packstreet_id: editPackstreetId,
       });
       onGroupChanged(updated);
@@ -181,7 +181,7 @@ const [saving, setSaving] = useState(false);
             <div>
               <h2>
                 {data.name}{" "}
-                <span className="overview__number">#{data.group_number}</span>
+                <span className="overview__number">#{data.internal_id}</span>
               </h2>
               <p className="overview__subtitle">{data.packstreet.name}</p>
             </div>
@@ -242,10 +242,10 @@ Bearbeiten
                 <input
                   type="text"
                   value={editNumber}
-                  placeholder="Gruppennummer"
+                  placeholder="Kochgruppen-ID"
                   onChange={(e) => setEditNumber(e.target.value)}
                   disabled={saving}
-                  aria-label="Gruppennummer"
+                  aria-label="Kochgruppen-ID"
                 />
                 <select
                   value={editPackstreetId}

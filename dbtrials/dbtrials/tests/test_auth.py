@@ -108,7 +108,7 @@ class CookieAuthTests(TestCase):
         token = self.client.cookies["csrftoken"].value
         response = self.client.post(
             "/api/groups",
-            data={"name": "G1", "group_number": "1", "packstreet_id": packstreet.pk},
+            data={"name": "G1", "internal_id": "1", "packstreet_id": packstreet.pk},
             content_type="application/json",
             HTTP_X_CSRFTOKEN=token,
         )

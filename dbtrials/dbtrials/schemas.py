@@ -59,7 +59,7 @@ class CookinggroupIn(Schema):
     """Input schema for creating or updating a rental group."""
 
     name: str
-    group_number: str
+    internal_id: str
     packstreet_id: int
 
 
@@ -67,7 +67,7 @@ class GroupImportRowOut(Schema):
     """A single group row processed during a CSV import."""
 
     name: str
-    group_number: str
+    internal_id: str
     packstreet: str
 
 
@@ -118,7 +118,7 @@ class GroupSummaryOut(Schema):
 
     id: int
     name: str
-    group_number: str
+    internal_id: str
     packstreet: PackstreetOut
     total_items: int
     rentals: list[RentalItemOut]
@@ -148,7 +148,7 @@ class GroupOverviewOut(Schema):
 
     id: int
     name: str
-    group_number: str
+    internal_id: str
     packstreet: PackstreetOut
     items: list[GroupOverviewItemOut]
     recent_actions: list[RentalActionOut]
@@ -174,5 +174,5 @@ class GroupHistoryOut(Schema):
 
     id: int
     name: str
-    group_number: str
+    internal_id: str
     series: list[ItemHistoryOut]

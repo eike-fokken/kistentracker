@@ -113,7 +113,7 @@ class Cookinggroup(Model):
     """A user group that is able to rent items."""
 
     name = CharField(max_length=200, unique=True)
-    group_number = CharField(max_length=50, unique=True)
+    internal_id = CharField(max_length=50, unique=True)
     packstreet = ForeignKey(
         Packstreet,
         on_delete=PROTECT,
@@ -121,7 +121,7 @@ class Cookinggroup(Model):
     )
 
     def __str__(self) -> str:
-        return f"{self.group_number} - {self.name}"
+        return f"{self.internal_id} - {self.name}"
 
 
 class Rental(Model):

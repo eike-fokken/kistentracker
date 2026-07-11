@@ -103,7 +103,7 @@ def _group_summary(group: Cookinggroup) -> dict[str, Any]:
     return {
         "id": group.pk,
         "name": group.name,
-        "group_number": group.group_number,
+        "internal_id": group.internal_id,
         "packstreet": {"id": group.packstreet_id, "name": group.packstreet.name},
         "total_items": sum(r.quantity for r in rentals),
         "rentals": rentals,
@@ -134,7 +134,7 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
     return {
         "id": group.pk,
         "name": group.name,
-        "group_number": group.group_number,
+        "internal_id": group.internal_id,
         "packstreet": {"id": group.packstreet_id, "name": group.packstreet.name},
         "items": items,
         "recent_actions": recent_actions,
@@ -403,25 +403,25 @@ def create_group(
 ) -> tuple[int, dict[str, Any]]:
     """Create a new user group that can rent items. Admin only."""
     name = payload.name.strip()
-    group_number = payload.group_number.strip()
+    internal_id = payload.internal_id.strip()
     if not name:
         raise HttpError(400, "Gruppenname darf nicht leer sein.")
-    if not group_number:
-        raise HttpError(400, "Gruppennummer darf nicht leer sein.")
+    if not internal_id:
+        raise HttpError(400, "Kochgruppen-ID darf nicht leer sein.")
     if Cookinggroup.objects.filter(name=name).exists():
         raise HttpError(409, f"Eine Gruppe namens „{name}“ existiert bereits.")
-    if Cookinggroup.objects.filter(group_number=group_number).exists():
+    if Cookinggroup.objects.filter(internal_id=internal_id).exists():
         raise HttpError(
-            409, f"Eine Gruppe mit der Nummer „{group_number}“ existiert bereits."
+            409, f"Eine Gruppe mit der ID „{internal_id}“ existiert bereits."
         )
     packstreet = get_object_or_404(Packstreet, pk=payload.packstreet_id)
     try:
         group = Cookinggroup.objects.create(
-            name=name, group_number=group_number, packstreet=packstreet
+            name=name, internal_id=internal_id, packstreet=packstreet
         )
     except IntegrityError as exc:
         raise HttpError(
-            409, "Dieser Gruppenname oder diese Gruppennummer ist bereits vergeben."
+            409, "Dieser Gruppenname oder diese Kochgruppen-ID ist bereits vergeben."
         ) from exc
     return 201, _group_summary(group)
 
@@ -451,17 +451,17 @@ def list_groups(
         term = q.strip()
         if term:
             groups = groups.filter(
-                Q(name__icontains=term) | Q(group_number__icontains=term)
+                Q(name__icontains=term) | Q(internal_id__icontains=term)
             )
-    groups = groups.order_by("packstreet__name", "group_number", "name")
+    groups = groups.order_by("packstreet__name", "internal_id", "name")
     return [_group_summary(group) for group in groups]
 
 
-def _looks_like_csv_header(name: str, group_number: str, packstreet: str) -> bool:
+def _looks_like_csv_header(name: str, internal_id: str, packstreet: str) -> bool:
     """Heuristically detect a header row so it can be skipped on import."""
     return (
         "name" in name.lower()
-        and "number" in group_number.lower()
+        and ("id" in internal_id.lower() or "number" in internal_id.lower())
         and "packstra" in packstreet.lower()
     )
 
@@ -506,7 +506,7 @@ def group_history(request: HttpRequest, group_id: int) -> dict[str, Any]:
     return {
         "id": group.pk,
         "name": group.name,
-        "group_number": group.group_number,
+        "internal_id": group.internal_id,
         "series": series,
     }
 
@@ -525,14 +525,8 @@ def download_stock_csv(request: HttpRequest) -> HttpResponse:
         Cookinggroup.objects.select_related("packstreet").prefetch_related("rentals")
     )
 
-    def sort_key(group: Cookinggroup) -> tuple[str, int, str]:
-        # Group numbers are stored as strings but are conceptually numeric;
-        # sort numerically when possible, falling back to lexical order.
-        number = group.group_number
-        try:
-            return (group.packstreet.name, int(number), "")
-        except ValueError:
-            return (group.packstreet.name, 0, number)
+    def sort_key(group: Cookinggroup) -> tuple[str, str, str]:
+        return (group.packstreet.name, group.internal_id, group.name)
 
     groups.sort(key=sort_key)
 
@@ -540,13 +534,13 @@ def download_stock_csv(request: HttpRequest) -> HttpResponse:
     response["Content-Disposition"] = 'attachment; filename="gruppen-bestand.csv"'
     writer = csv.writer(response)
     writer.writerow(
-        ["Packstraße", "Gruppennummer", "Gruppenname"]
+        ["Packstraße", "Kochgruppen-ID", "Gruppenname"]
         + [item_type.label for item_type in item_types]
     )
     for group in groups:
         quantities = {r.item_type: r.quantity for r in group.rentals.all()}
         writer.writerow(
-            [group.packstreet.name, group.group_number, group.name]
+            [group.packstreet.name, group.internal_id, group.name]
             + [quantities.get(item_type.key, 0) for item_type in item_types]
         )
     return response
@@ -585,21 +579,21 @@ def import_groups(
         if len(row) < 3:
             errors.append(
                 f"Zeile {line_number}: 3 Spalten erwartet (Gruppenname, "
-                f"Gruppennummer, Packstraße), {len(row)} gefunden."
+                f"Kochgruppen-ID, Packstraße), {len(row)} gefunden."
             )
             continue
-        name, group_number, packstreet_name = (
+        name, internal_id, packstreet_name = (
             row[0].strip(),
             row[1].strip(),
             row[2].strip(),
         )
         if line_number == 1 and _looks_like_csv_header(
-            name, group_number, packstreet_name
+            name, internal_id, packstreet_name
         ):
             continue
-        if not name or not group_number or not packstreet_name:
+        if not name or not internal_id or not packstreet_name:
             errors.append(
-                f"Zeile {line_number}: Gruppenname, Gruppennummer und Packstraße "
+                f"Zeile {line_number}: Gruppenname, Kochgruppen-ID und Packstraße "
                 "sind alle erforderlich."
             )
             continue
@@ -611,19 +605,19 @@ def import_groups(
             continue
         row_out = {
             "name": name,
-            "group_number": group_number,
+            "internal_id": internal_id,
             "packstreet": packstreet.name,
         }
         if (
             Cookinggroup.objects.filter(name=name).exists()
-            or Cookinggroup.objects.filter(group_number=group_number).exists()
+            or Cookinggroup.objects.filter(internal_id=internal_id).exists()
         ):
             skipped.append(row_out)
             continue
         try:
             with transaction.atomic():
                 Cookinggroup.objects.create(
-                    name=name, group_number=group_number, packstreet=packstreet
+                    name=name, internal_id=internal_id, packstreet=packstreet
                 )
         except IntegrityError:
             skipped.append(row_out)
@@ -643,31 +637,31 @@ def update_group(
 ) -> dict[str, Any]:
     """Update a group's name, number and packstreet. Admin only."""
     name = payload.name.strip()
-    group_number = payload.group_number.strip()
+    internal_id = payload.internal_id.strip()
     if not name:
         raise HttpError(400, "Gruppenname darf nicht leer sein.")
-    if not group_number:
-        raise HttpError(400, "Gruppennummer darf nicht leer sein.")
+    if not internal_id:
+        raise HttpError(400, "Kochgruppen-ID darf nicht leer sein.")
     group = get_object_or_404(Cookinggroup, pk=group_id)
     if Cookinggroup.objects.filter(name=name).exclude(pk=group_id).exists():
         raise HttpError(409, f"Eine Gruppe namens „{name}“ existiert bereits.")
     if (
-        Cookinggroup.objects.filter(group_number=group_number)
+        Cookinggroup.objects.filter(internal_id=internal_id)
         .exclude(pk=group_id)
         .exists()
     ):
         raise HttpError(
-            409, f"Eine Gruppe mit der Nummer „{group_number}“ existiert bereits."
+            409, f"Eine Gruppe mit der ID „{internal_id}“ existiert bereits."
         )
     packstreet = get_object_or_404(Packstreet, pk=payload.packstreet_id)
     group.name = name
-    group.group_number = group_number
+    group.internal_id = internal_id
     group.packstreet = packstreet
     try:
-        group.save(update_fields=["name", "group_number", "packstreet"])
+        group.save(update_fields=["name", "internal_id", "packstreet"])
     except IntegrityError as exc:
         raise HttpError(
-            409, "Dieser Gruppenname oder diese Gruppennummer ist bereits vergeben."
+            409, "Dieser Gruppenname oder diese Kochgruppen-ID ist bereits vergeben."
         ) from exc
     return _group_summary(group)
 

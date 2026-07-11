@@ -31,7 +31,7 @@ export function CreateGroupForm({
       return;
     }
     if (!trimmedNumber) {
-      setError("Bitte gib eine Gruppennummer ein.");
+      setError("Bitte gib eine Kochgruppen-ID ein.");
       return;
     }
     if (packstreetId === "") {
@@ -44,7 +44,7 @@ export function CreateGroupForm({
     try {
       const group = await createGroup({
         name: trimmedName,
-        group_number: trimmedNumber,
+        internal_id: trimmedNumber,
         packstreet_id: packstreetId,
       });
       onCreated(group);
@@ -77,10 +77,10 @@ export function CreateGroupForm({
           <input
             type="text"
             value={groupNumber}
-            placeholder="Gruppennummer"
+            placeholder="Kochgruppen-ID"
             onChange={(e) => setGroupNumber(e.target.value)}
             disabled={submitting}
-            aria-label="Gruppennummer"
+            aria-label="Kochgruppen-ID"
           />
           <select
             value={packstreetId}
