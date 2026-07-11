@@ -16,6 +16,7 @@ from django.db.models import (
     TextChoices,
     UniqueConstraint,
 )
+from django.utils import timezone
 
 
 class UserRole(TextChoices):
@@ -89,9 +90,10 @@ class ItemType(Model):
         max_length=20,
         choices=ItemClass.choices,
     )
+    created_at = DateTimeField(default=timezone.now)
 
     class Meta:
-        ordering = ["label"]
+        ordering = ["-item_class", "created_at"]
 
     def __str__(self) -> str:
         return self.label

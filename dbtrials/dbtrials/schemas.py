@@ -55,6 +55,7 @@ class ItemTypeOut(Schema):
     key: str
     label: str
     item_class: str
+    created_at: datetime
 
 
 class CookinggroupIn(Schema):

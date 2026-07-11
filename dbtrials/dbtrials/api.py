@@ -319,7 +319,7 @@ def delete_packstreet(request: HttpRequest, packstreet_id: int) -> tuple[int, No
 )
 @require_permissions(IsAuthenticated)
 def list_item_types(request: HttpRequest) -> list[ItemType]:
-    """List all item types, ordered by label."""
+    """List all item types, with rentable items before consumables, each ordered by creation time."""
     return list(ItemType.objects.all())
 
 
