@@ -145,8 +145,10 @@ class RentalActionOut(Schema):
     timestamp: datetime
 
 
+class UpdateActionIn(Schema):
+    """Input schema for updating a rental action's quantity."""
 
-
+    quantity: int
 
 class GroupOverviewOut(Schema):
     """Detailed group overview listing every possible item type."""

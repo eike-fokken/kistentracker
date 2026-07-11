@@ -355,3 +355,14 @@ export function deleteAction(
     method: "DELETE",
   });
 }
+
+export function updateActionQuantity(
+  groupId: number,
+  actionId: number,
+  quantity: number,
+): Promise<GroupSummary> {
+  return request<GroupSummary>(`/groups/${groupId}/actions/${actionId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity }),
+  });
+}

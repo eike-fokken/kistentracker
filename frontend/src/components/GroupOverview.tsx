@@ -5,6 +5,7 @@ import {
   deleteAction,
   getGroupOverview,
   listRecentActions,
+  updateActionQuantity,
   updateCurrentUser,
   updateGroup,
 } from "../api";
@@ -103,6 +104,8 @@ export function GroupOverview({
   const [correctionUntil, setCorrectionUntil] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState("");
 
   useEffect(() => {
     setShowConsumables(showConsumablesProp);
@@ -215,6 +218,42 @@ export function GroupOverview({
     } catch (err) {
       setDeleteError(
         err instanceof ApiError ? err.message : "Aktion konnte nicht gelöscht werden.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function startEditAction(entry: RecentAction) {
+    setEditingId(entry.id);
+    setEditingQuantity(String(entry.quantity));
+    setDeleteError(null);
+  }
+
+  function cancelEditAction() {
+    setEditingId(null);
+    setEditingQuantity("");
+  }
+
+  async function saveEditAction(actionId: number) {
+    const quantity = Math.floor(Number(editingQuantity));
+    if (!Number.isFinite(quantity) || quantity === 0) {
+      setDeleteError("Menge muss eine ganze Zahl ungleich 0 sein.");
+      return;
+    }
+
+    setDeletingId(actionId);
+    setDeleteError(null);
+    try {
+      const updated = await updateActionQuantity(groupId, actionId, quantity);
+      onGroupChanged(updated);
+      await load();
+      await loadCorrectionActions();
+      setEditingId(null);
+      setEditingQuantity("");
+    } catch (err) {
+      setDeleteError(
+        err instanceof ApiError ? err.message : "Aktion konnte nicht bearbeitet werden.",
       );
     } finally {
       setDeletingId(null);
@@ -447,22 +486,82 @@ export function GroupOverview({
                     key={entry.id}
                     className={`action-log__item action-log__item--${entry.action}`}
                   >
-                    <span className="action-log__desc">
-                      <strong>{entry.username ?? "(unbekannter Benutzer)"}</strong>{" "}
-                      {describeAction(entry, labels)}
-                    </span>
+                    {editingId === entry.id ? (
+                      <span className="action-log__desc">
+                        <strong>{entry.username ?? "(unbekannter Benutzer)"}</strong>{" "}
+                        <span
+                          className={
+                            entry.action === "rent"
+                              ? "action-log__verb--rent"
+                              : "action-log__verb--return"
+                          }
+                        >
+                          {entry.action === "rent" ? "ausgegeben" : "zurückgenommen"}
+                        </span>{" "}
+                        <input
+                          type="number"
+                          className="correction__edit-input"
+                          value={editingQuantity}
+                          onChange={(e) => setEditingQuantity(e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void saveEditAction(entry.id);
+                            if (e.key === "Escape") cancelEditAction();
+                          }}
+                          disabled={deletingId === entry.id}
+                          aria-label="Neue Menge"
+                        />{" "}
+                        × {labels[entry.item_type] ?? entry.item_type}
+                      </span>
+                    ) : (
+                      <span className="action-log__desc">
+                        <strong>{entry.username ?? "(unbekannter Benutzer)"}</strong>{" "}
+                        {describeAction(entry, labels)}
+                      </span>
+                    )}
                     <div className="correction__row-right">
                       <time className="action-log__time" dateTime={entry.timestamp}>
                         {formatTimestamp(entry.timestamp)}
                       </time>
-                      <button
-                        type="button"
-                        className="btn btn--danger"
-                        onClick={() => void handleDelete(entry.id)}
-                        disabled={deletingId === entry.id}
-                      >
-                        {deletingId === entry.id ? "Löschen…" : "Löschen"}
-                      </button>
+                      {editingId === entry.id ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn--primary"
+                            onClick={() => void saveEditAction(entry.id)}
+                            disabled={deletingId === entry.id}
+                          >
+                            {deletingId === entry.id ? "Speichere…" : "Speichern"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn--ghost"
+                            onClick={cancelEditAction}
+                            disabled={deletingId === entry.id}
+                          >
+                            Abbrechen
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn--ghost"
+                            onClick={() => startEditAction(entry)}
+                            disabled={deletingId === entry.id || editingId !== null}
+                          >
+                            Bearbeiten
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn--danger"
+                            onClick={() => void handleDelete(entry.id)}
+                            disabled={deletingId === entry.id || editingId !== null}
+                          >
+                            {deletingId === entry.id ? "Löschen…" : "Löschen"}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}

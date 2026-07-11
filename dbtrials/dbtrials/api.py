@@ -52,6 +52,7 @@ from dbtrials.schemas import (
     PackstreetOut,
     RentalActionOut,
     RentalItemOut,
+    UpdateActionIn,
     UserOut,
     UserUpdateIn,
 )
@@ -834,6 +835,61 @@ def recent_actions(
     ]
 
 
+@router.patch(
+    "/groups/{group_id}/actions/{action_id}",
+    response=GroupSummaryOut,
+)
+@require_permissions(IsAuthenticated)
+def update_action(
+    request: HttpRequest, group_id: int, action_id: int, payload: UpdateActionIn
+) -> dict[str, Any]:
+    """Update the quantity of a rental action and adjust the group's stock.
+
+    Regular users can only update their own actions within a 10-minute window.
+    Admins can update any action regardless of age or ownership.
+    The action type (rent/return) cannot be changed — only the quantity.
+    """
+    group = get_object_or_404(Cookinggroup, pk=group_id)
+    action = get_object_or_404(RentalAction, pk=action_id, group=group)
+    user = getattr(request, "auth")
+    is_admin = getattr(user, "is_admin", False)
+
+    if not is_admin:
+        if action.user != user:
+            raise HttpError(403, "Du kannst nur deine eigenen Aktionen bearbeiten.")
+        cutoff = timezone.now() - timedelta(minutes=10)
+        if action.timestamp < cutoff:
+            raise HttpError(
+                403,
+                "Aktionen können nur innerhalb von 10 Minuten bearbeitet werden.",
+            )
+
+    with transaction.atomic():
+        rental = (
+            Rental.objects.select_for_update()
+            .filter(group=group, item_type=action.item_type)
+            .first()
+        )
+        if action.action == ActionType.RENT:
+            rental.quantity -= action.quantity
+        else:
+            rental.quantity += action.quantity
+        rental.save(update_fields=["quantity"])
+
+        action.quantity = payload.quantity
+
+        if action.action == ActionType.RENT:
+            rental.quantity += action.quantity
+        else:
+            rental.quantity -= action.quantity
+        rental.save(update_fields=["quantity"])
+
+        action.save(update_fields=["quantity"])
+
+    group.refresh_from_db()
+    return _group_summary(group)
+
+
 @router.delete(
     "/groups/{group_id}/actions/{action_id}",
     response=GroupSummaryOut,
@@ -872,7 +928,7 @@ def delete_action(
             if action.action == ActionType.RENT:
                 rental.quantity -= action.quantity
             else:
-                rental.quantity += abs(action.quantity)
+                rental.quantity += action.quantity
             rental.save(update_fields=["quantity"])
         action.delete()
 
