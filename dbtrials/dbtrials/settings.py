@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in ("true", "1")
+DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1")
 
 ALLOWED_HOSTS: list[str] = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -62,19 +62,24 @@ MIDDLEWARE = [
 
 
 CORS_ALLOW_CREDENTIALS = True
+
+csrf_env_entries = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
+
+csrf_env_list = []
+if csrf_env_entries != "":
+    csrf_env_list = csrf_env_entries.split(",")
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost",
     "http://127.0.0.1",
     "http://localhost:8443",
     "http://127.0.0.1:8443",
-] + os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+] + csrf_env_list
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "http://127.0.0.1",
-] + os.getenv(
-    "DJANGO_CSRF_TRUSTED_ORIGINS", ""
-).split(",")
+] + csrf_env_list
 
 # Cookie security. The JWT cookies are HttpOnly (set in api.py); the CSRF
 # cookie must stay JS-readable so the SPA can echo it as the X-CSRFToken header.

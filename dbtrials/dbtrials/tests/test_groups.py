@@ -195,9 +195,9 @@ class GroupFeatureTests(TestCase):
         )
         a = Packstreet.objects.create(name="Alpha")
         b = Packstreet.objects.create(name="Beta")
-        self._create_group("Ten", "10", a.pk)
-        self._create_group("Two", "2", a.pk)
-        self._create_group("Five", "5", b.pk)
+        self._create_group("Ten", "B-id", a.pk)
+        self._create_group("Two", "A-id", a.pk)
+        self._create_group("Five", "A", b.pk)
 
         response = self.client.get(
             "/api/groups/stock.csv", HTTP_AUTHORIZATION=self.user_header
@@ -206,12 +206,12 @@ class GroupFeatureTests(TestCase):
         self.assertEqual(response["Content-Type"], "text/csv")
         rows = response.content.decode().splitlines()
         self.assertEqual(
-            rows[0], "Packstraße,Gruppennummer,Gruppenname,Computer,Flipchart"
+            rows[0], "Packstraße,Kochgruppen-ID,Gruppenname,Computer,Flipchart"
         )
         # Alpha before Beta; within Alpha, numeric order 2 before 10.
-        self.assertEqual(rows[1].split(",")[:3], ["Alpha", "2", "Two"])
-        self.assertEqual(rows[2].split(",")[:3], ["Alpha", "10", "Ten"])
-        self.assertEqual(rows[3].split(",")[:3], ["Beta", "5", "Five"])
+        self.assertEqual(rows[1].split(",")[:3], ["Alpha", "A-id", "Two"])
+        self.assertEqual(rows[2].split(",")[:3], ["Alpha", "B-id", "Ten"])
+        self.assertEqual(rows[3].split(",")[:3], ["Beta", "A", "Five"])
 
     # --- Group update ----------------------------------------------------
 

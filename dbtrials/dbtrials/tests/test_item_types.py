@@ -164,5 +164,5 @@ class ItemTypeTests(TestCase):
         self.assertEqual(csv_response.status_code, 200)
         header = csv_response.content.decode().splitlines()[0]
         self.assertEqual(
-            header, "Packstraße,Gruppennummer,Gruppenname,Computer,Flipchart,Projector"
+            header, "Packstraße,Kochgruppen-ID,Gruppenname,Computer,Flipchart,Projector"
         )
