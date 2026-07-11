@@ -17,20 +17,20 @@ interface Props {
   onBack: () => void;
 }
 
-function formatTick(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function formatTick(time: number): string {
+  return new Date(time).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
 }
 
-function formatFull(iso: string): string {
-  return new Date(iso).toLocaleString();
+function formatFull(time: number): string {
+  return new Date(time).toLocaleString();
 }
 
 function ItemChart({ series }: { series: ItemHistory }) {
   const data = series.points.map((point) => ({
-    timestamp: point.timestamp,
+    time: new Date(point.timestamp).getTime(),
     quantity: point.quantity,
   }));
 
@@ -47,14 +47,16 @@ function ItemChart({ series }: { series: ItemHistory }) {
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e4e9" />
             <XAxis
-              dataKey="timestamp"
+              dataKey="time"
+              type="number"
+              domain={["dataMin", "dataMax"]}
               tickFormatter={formatTick}
               minTickGap={24}
               fontSize={14}
             />
             <YAxis allowDecimals={false} width={36} fontSize={14} />
             <Tooltip
-              labelFormatter={(label) => formatFull(String(label))}
+              labelFormatter={(label) => formatFull(Number(label))}
               formatter={(value) => [value as number, "Ausgeliehen"]}
             />
             <Line
