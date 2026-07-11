@@ -24,7 +24,7 @@ body {
 }
 
 .app {
-  max-width: 720px;
+  width: 90%;
   margin: 0 auto;
   padding: 2rem 1rem 4rem;
 }
@@ -166,8 +166,10 @@ body {
 
 .groups-table th.num,
 .groups-table td.num {
-  text-align: right;
+  text-align: center;
   font-variant-numeric: tabular-nums;
+  font-size: 1.6rem;
+  font-weight: 700;
 }
 
 .groups-table th.bool,
@@ -243,18 +245,19 @@ body {
 }
 
 .overview__id {
+  color: var(--primary-hover);
   font-weight: 600;
 }
 
 .overview__name {
-  color: var(--muted);
-  font-weight: 500;
-  margin-right: auto;
+  margin: 0 auto;
+  font-weight: 600;
 }
 
 .overview__subtitle {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-weight: inherit;
+  font-size: inherit;
   margin-left: auto;
 }
 
@@ -284,6 +287,24 @@ body {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem;
+}
+
+.row-actions__group--rent {
+  border-color: #93c5fd;
+  background: #dbeafe;
+}
+
+.row-actions__group--return {
+  border-color: #94a3b8;
+  background: #e2e8f0;
+}
+
+.row-actions__group--correct {
+  border-color: #93c5fd;
+  background: #dbeafe;
 }
 
 .row-actions input[type="number"] {
@@ -407,6 +428,16 @@ select:focus {
 
 .btn--ghost:not(:disabled):hover {
   background: var(--bg);
+}
+
+.btn--secondary {
+  background: #475569;
+  border-color: #475569;
+  color: #fff;
+}
+
+.btn--secondary:not(:disabled):hover {
+  background: #334155;
 }
 
 .banner {
@@ -644,12 +675,6 @@ select:focus {
 }
 
 /* --- Group overview / history --- */
-
-.overview__subtitle {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
 
 .history__chart {
   margin-top: 1.5rem;

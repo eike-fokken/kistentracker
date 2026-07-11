@@ -102,7 +102,7 @@ export function OverviewItemRow({ groupId, item, onUpdated, showCorrect }: Props
         <td className="num">{item.quantity}</td>
         <td>
           <div className="row-actions">
-            <div className="row-actions__group">
+<div className="row-actions__group row-actions__group--correct">
               <input
                 type="number"
                 value={correctAmount}
@@ -136,7 +136,7 @@ Korrigieren
       <td className="num">{item.quantity}</td>
       <td>
         <div className="row-actions">
-          <div className="row-actions__group">
+          <div className="row-actions__group row-actions__group--rent">
             <input
               type="number"
               min={1}
@@ -160,7 +160,7 @@ Ausgeben
             </button>
           </div>
           {!isConsumable && (
-          <div className="row-actions__group">
+          <div className="row-actions__group row-actions__group--return">
             <input
               type="number"
               min={1}
@@ -176,7 +176,7 @@ Ausgeben
             />
             <button
               type="button"
-              className="btn btn--ghost"
+              className="btn btn--secondary"
               onClick={() => void returnItem(returnAmount)}
               disabled={busy}
             >
