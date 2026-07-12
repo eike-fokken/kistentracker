@@ -723,6 +723,25 @@ select:focus {
   font-size: 1.2rem;
 }
 
+.history__dates {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.history__date-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.history__date-label .input {
+  width: 14rem;
+}
+
 
 /* --- Correction modal --- */
 

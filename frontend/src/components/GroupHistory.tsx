@@ -28,11 +28,22 @@ function formatFull(time: number): string {
   return new Date(time).toLocaleString();
 }
 
-function ItemChart({ series }: { series: ItemHistory }) {
+interface ItemChartProps {
+  series: ItemHistory;
+  startDate?: string;
+  endDate?: string;
+}
+
+function ItemChart({ series, startDate, endDate }: ItemChartProps) {
   const data = series.points.map((point) => ({
     time: new Date(point.timestamp).getTime(),
     quantity: point.quantity,
   }));
+
+  const xDomain: [number, number] | ["dataMin", "dataMax"] =
+    startDate && endDate
+      ? [new Date(startDate).getTime(), new Date(endDate).getTime()]
+      : ["dataMin", "dataMax"];
 
   return (
     <section className="history__chart">
@@ -49,7 +60,7 @@ function ItemChart({ series }: { series: ItemHistory }) {
             <XAxis
               dataKey="time"
               type="number"
-              domain={["dataMin", "dataMax"]}
+              domain={xDomain}
               tickFormatter={formatTick}
               minTickGap={24}
               fontSize={14}
@@ -78,12 +89,14 @@ export function GroupHistory({ groupId, onBack }: Props) {
   const [data, setData] = useState<GroupHistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setData(await getGroupHistory(groupId));
+      setData(await getGroupHistory(groupId, startDate || undefined, endDate || undefined));
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Verlauf konnte nicht geladen werden.",
@@ -91,7 +104,7 @@ export function GroupHistory({ groupId, onBack }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, startDate, endDate]);
 
   useEffect(() => {
     void load();
@@ -107,6 +120,27 @@ export function GroupHistory({ groupId, onBack }: Props) {
         ← Zurück zur Gruppenübersicht
       </button>
 
+      <div className="history__dates">
+        <label className="history__date-label">
+          Von:
+          <input
+            type="date"
+            className="input"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+        </label>
+        <label className="history__date-label">
+          Bis:
+          <input
+            type="date"
+            className="input"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </label>
+      </div>
+
       {loading && !data && <p className="empty">Ladevorgang…</p>}
       {error && <p className="banner banner--error">{error}</p>}
 
@@ -120,7 +154,12 @@ export function GroupHistory({ groupId, onBack }: Props) {
           </header>
 
           {data.series.map((series) => (
-            <ItemChart key={series.item_type} series={series} />
+            <ItemChart
+              key={series.item_type}
+              series={series}
+              startDate={startDate || undefined}
+              endDate={endDate || undefined}
+            />
           ))}
         </>
       )}

@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from django.contrib.auth import authenticate as django_authenticate
@@ -477,18 +477,68 @@ def list_groups(
     response=GroupHistoryOut,
 )
 @require_permissions(IsAuthenticated)
-def group_history(request: HttpRequest, group_id: int) -> dict[str, Any]:
+def group_history(
+    request: HttpRequest,
+    group_id: int,
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
+) -> dict[str, Any]:
     """Cumulative rented-out stock over time, per item type, for a group.
 
     Replays the rental audit log in chronological order, accumulating a running
     quantity for each item type so the frontend can chart rentals and returns
-    over time.
+    over time.  Optional start_date / end_date (inclusive) filter the result
+    to a specific time window and insert a synthetic starting point so that
+    charts reflect the actual stock at the window start.
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
-    actions = group.actions.order_by("timestamp")
     item_types = list(ItemType.objects.all())
-    points: dict[str, list[dict[str, Any]]] = {it.key: [] for it in item_types}
     running: dict[str, int] = {it.key: 0 for it in item_types}
+
+    if start_date is not None or end_date is not None:
+        # Compute the cumulative quantity at the start of the window (or day 0)
+        # so that charts don't falsely start at 0.
+        start = (
+            start_date
+            if start_date is not None
+            else datetime(1970, 1, 1, tzinfo=timezone.get_current_timezone())
+        )
+        end = (
+            end_date
+            if end_date is not None
+            else datetime(2099, 12, 31, tzinfo=timezone.get_current_timezone())
+        )
+        pre_actions = group.actions.filter(timestamp__lt=start).order_by("timestamp")
+        for action in pre_actions:
+            item_type = action.item_type
+            if item_type not in running:
+                continue
+            delta = (
+                action.quantity
+                if action.action == ActionType.RENT
+                else -action.quantity
+            )
+            running[item_type] = running[item_type] + delta
+        end_inclusive = end + timedelta(days=1)
+        actions = group.actions.filter(
+            timestamp__gte=start, timestamp__lt=end_inclusive
+        ).order_by("timestamp")
+    else:
+        actions = group.actions.order_by("timestamp")
+
+    points: dict[str, list[dict[str, Any]]] = {it.key: [] for it in item_types}
+
+    if start_date is not None:
+        # Inject a synthetic starting point so the chart includes the
+        # correct quantity at the beginning of the window.
+        start_dt = datetime.combine(
+            start_date, datetime.min.time(), tzinfo=timezone.get_current_timezone()
+        )
+        for it in item_types:
+            points[it.key].append(
+                {"timestamp": start_dt, "quantity": running[it.key]}
+            )
+
     for action in actions:
         item_type = action.item_type
         if item_type not in running:

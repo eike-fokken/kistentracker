@@ -230,8 +230,18 @@ export function getGroupOverview(groupId: number): Promise<GroupOverview> {
   return request<GroupOverview>(`/groups/${groupId}/overview`);
 }
 
-export function getGroupHistory(groupId: number): Promise<GroupHistory> {
-  return request<GroupHistory>(`/groups/${groupId}/history`);
+export function getGroupHistory(
+  groupId: number,
+  startDate?: string,
+  endDate?: string,
+): Promise<GroupHistory> {
+  const params = new URLSearchParams();
+  if (startDate) params.set("start_date", startDate);
+  if (endDate) params.set("end_date", endDate);
+  const query = params.toString();
+  return request<GroupHistory>(
+    `/groups/${groupId}/history${query ? `?${query}` : ""}`,
+  );
 }
 
 export function createGroup(payload: {
