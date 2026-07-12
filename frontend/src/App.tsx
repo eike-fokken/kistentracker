@@ -320,6 +320,11 @@ export default function App() {
                 value={search}
                 placeholder="Gruppenname oder -ID suchen…"
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && groups.length === 1) {
+                    window.location.hash = `/group/${groups[0].id}`;
+                  }
+                }}
                 aria-label="Gruppen durchsuchen"
               />
               <button
