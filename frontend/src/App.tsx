@@ -232,7 +232,7 @@ export default function App() {
 
   if (!authed) {
     return (
-      <div className="app">
+      <div className="app app--login">
         <header className="app__header">
           <h1>Kisten-Tracker</h1>
         </header>

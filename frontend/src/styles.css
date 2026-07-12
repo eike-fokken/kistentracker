@@ -71,6 +71,14 @@ body {
   white-space: nowrap;
 }
 
+.app--login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: none;
+}
+
 .login {
   max-width: 360px;
 }
