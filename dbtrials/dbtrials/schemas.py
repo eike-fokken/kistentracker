@@ -184,3 +184,20 @@ class GroupHistoryOut(Schema):
     name: str
     internal_id: str
     series: list[ItemHistoryOut]
+
+
+class IntegrityMismatchOut(Schema):
+    """A single group/item_type pair where the sum of actions doesn't match Rental.quantity."""
+
+    group_id: int
+    group_name: str
+    item_type: str
+    rental_quantity: int
+    computed_quantity: int
+
+
+class IntegrityCheckOut(Schema):
+    """Result of the integrity check endpoint."""
+
+    ok: bool
+    mismatches: list[IntegrityMismatchOut]

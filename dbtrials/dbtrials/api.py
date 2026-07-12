@@ -1,8 +1,10 @@
 import csv
 import io
+import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from django.conf import settings
 from django.contrib.auth import authenticate as django_authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
@@ -45,6 +47,7 @@ from dbtrials.schemas import (
     GroupImportResultOut,
     GroupOverviewOut,
     GroupSummaryOut,
+    IntegrityCheckOut,
     ItemTypeIn,
     ItemTypeOut,
     LoginIn,
@@ -824,6 +827,7 @@ def change_quantity(
             quantity=payload.quantity,
         )
     group.refresh_from_db()
+    _validate_after_mutation()
     return _group_summary(group)
 
 
@@ -921,6 +925,7 @@ def update_action(
         action.save(update_fields=["quantity"])
 
     group.refresh_from_db()
+    _validate_after_mutation()
     return _group_summary(group)
 
 
@@ -967,7 +972,68 @@ def delete_action(
         action.delete()
 
     group.refresh_from_db()
+    _validate_after_mutation()
     return _group_summary(group)
+
+
+logger = logging.getLogger(__name__)
+
+
+def _check_integrity() -> list[dict[str, Any]]:
+    """Compare the sum of all RentalActions against Rental.quantity for every
+    (group, item_type) pair and return a list of mismatches."""
+    mismatches: list[dict[str, Any]] = []
+    for group in Cookinggroup.objects.all():
+        rentals = {r.item_type: r for r in Rental.objects.filter(group=group)}
+        sums: dict[str, int] = {}
+        for action in group.actions.all():
+            delta = (
+                action.quantity
+                if action.action == ActionType.RENT
+                else -action.quantity
+            )
+            sums[action.item_type] = sums.get(action.item_type, 0) + delta
+        for item_type, computed in sums.items():
+            rental_row = rentals.get(item_type)
+            rental_qty = rental_row.quantity if rental_row else 0
+            if rental_qty != computed:
+                mismatches.append({
+                    "group_id": group.pk,
+                    "group_name": group.name,
+                    "item_type": item_type,
+                    "rental_quantity": rental_qty,
+                    "computed_quantity": computed,
+                })
+    return mismatches
+
+
+@router.get(
+    "/integrity-check",
+    response=IntegrityCheckOut,
+)
+@require_permissions(IsAdmin)
+def integrity_check(request: HttpRequest) -> dict[str, Any]:
+    """Check that the sum of every group's RentalActions matches its Rental
+    rows.  Admin only."""
+    mismatches = _check_integrity()
+    return {"ok": len(mismatches) == 0, "mismatches": mismatches}
+
+
+def _validate_after_mutation():
+    """Run integrity check when DEBUG is True; warn on console for mismatches."""
+    if not settings.DEBUG:
+        return
+    mismatches = _check_integrity()
+    if mismatches:
+        logger.warning(
+            "Integritätsprüfung fehlgeschlagen nach Mietaktion:\n%s",
+            "\n".join(
+                f"  Gruppe {m['group_name']} (ID {m['group_id']}): "
+                f"{m['item_type']} — erwartet {m['computed_quantity']}, "
+                f"gespeichert {m['rental_quantity']}"
+                for m in mismatches
+            ),
+        )
 
 
 api.add_router("", router)
