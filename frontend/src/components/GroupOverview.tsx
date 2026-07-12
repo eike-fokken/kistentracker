@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
   deleteAction,
+  deleteGroup,
   getGroupOverview,
   listRecentActions,
   updateActionQuantity,
@@ -73,6 +74,7 @@ interface Props {
   onBack: () => void;
   onViewHistory: () => void;
   onGroupChanged: (group: GroupSummary) => void;
+  onDeleted: (deletedId: number) => void;
 }
 
 export function GroupOverview({
@@ -83,6 +85,7 @@ export function GroupOverview({
   onBack,
   onViewHistory,
   onGroupChanged,
+  onDeleted,
 }: Props) {
   const [data, setData] = useState<GroupOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,6 +111,7 @@ export function GroupOverview({
   const [allActions, setAllActions] = useState<RecentAction[] | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [groupDeleteError, setGroupDeleteError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingQuantity, setEditingQuantity] = useState("");
 
@@ -140,6 +144,22 @@ export function GroupOverview({
     },
     [onGroupChanged, load],
   );
+
+  async function handleDeleteGroup() {
+    if (!data) return;
+    const confirmed = window.confirm(
+      `Gruppe „${data.name}“ löschen? Eine Gruppe, die noch Artikel ausgeliehen hat, kann nicht gelöscht werden.`,
+    );
+    if (!confirmed) return;
+    try {
+      await deleteGroup(groupId);
+      onDeleted(groupId);
+    } catch (err) {
+      setGroupDeleteError(
+        err instanceof ApiError ? err.message : "Fehler beim Löschen der Gruppe.",
+      );
+    }
+  }
 
   function startEdit() {
     if (!data) {
@@ -339,6 +359,18 @@ export function GroupOverview({
               >
                 Bearbeiten
               </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                className="btn btn--danger"
+                onClick={handleDeleteGroup}
+              >
+                Gruppe löschen
+              </button>
+            )}
+            {groupDeleteError && (
+              <p className="banner banner--error">{groupDeleteError}</p>
             )}
             <button
               type="button"

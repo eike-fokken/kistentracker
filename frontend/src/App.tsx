@@ -196,6 +196,10 @@ export default function App() {
     setReloadNonce((n) => n + 1);
   }, []);
 
+  const handleGroupDeleted = useCallback((deletedId: number) => {
+    setGroups((prev) => prev.filter((g) => g.id !== deletedId));
+  }, []);
+
   const handleItemTypesChanged = useCallback(() => {
     void loadItemTypes();
     setReloadNonce((n) => n + 1);
@@ -336,6 +340,10 @@ export default function App() {
             window.location.hash = `/group/${route.id}/history`;
           }}
           onGroupChanged={handleGroupUpdated}
+          onDeleted={(deletedId) => {
+            handleGroupDeleted(deletedId);
+            window.location.hash = "";
+          }}
         />
       ) : (
         <>
@@ -487,9 +495,11 @@ export default function App() {
                 groups={groups}
                 itemTypes={itemTypes.filter((it) => it.item_class !== "consumable")}
                 showPackstreet={searching}
+                isAdmin={isAdmin}
                 onOpenOverview={(group) => {
                   window.location.hash = `/group/${group.id}`;
                 }}
+                onDeleteGroup={(group) => handleGroupDeleted(group.id)}
               />
             )}
           </section>

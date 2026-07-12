@@ -271,6 +271,11 @@ export function updateGroup(
   });
 }
 
+/** Delete a group. Admin only; blocked if rentable items are still checked out. */
+export function deleteGroup(groupId: number): Promise<void> {
+  return request<void>(`/groups/${groupId}`, { method: "DELETE" });
+}
+
 /** Bulk-create groups from a CSV file. Admin only. */
 export async function importGroups(file: File): Promise<GroupImportResult> {
   const csrf = await ensureCsrfToken();
