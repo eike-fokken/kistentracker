@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   ApiError,
+  checkIntegrity,
   downloadStockCsv,
   getCurrentUser,
   listPackstreets,
@@ -11,7 +12,7 @@ import {
   updateCurrentUser,
 } from "./api";
 import { LOGOUT_EVENT } from "./auth";
-import type { CurrentUser, GroupSummary, ItemTypeDef, Packstreet } from "./types";
+import type { CurrentUser, GroupSummary, IntegrityCheckResult, ItemTypeDef, Packstreet } from "./types";
 import { PackstreetManager } from "./components/PackstreetManager";
 import { CreateGroupForm } from "./components/CreateGroupForm";
 import { DataImport } from "./components/DataImport";
@@ -61,6 +62,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
+  const [integrityResult, setIntegrityResult] =
+    useState<IntegrityCheckResult | null>(null);
+  const [integrityOpen, setIntegrityOpen] = useState(false);
+  const [integrityError, setIntegrityError] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const searching = debouncedSearch.trim().length > 0;
@@ -74,6 +79,7 @@ export default function App() {
     if (user.selected_packstreet_id !== null) {
       setSelectedPackstreetId(user.selected_packstreet_id);
     }
+    window.location.hash = "";
   }, []);
 
   // Log the user out when the session expires (refresh failed).
@@ -219,6 +225,20 @@ export default function App() {
     }
   }
 
+  async function handleIntegrityCheck() {
+    setIntegrityError(null);
+    setIntegrityResult(null);
+    try {
+      const result = await checkIntegrity();
+      setIntegrityResult(result);
+      setIntegrityOpen(true);
+    } catch (err) {
+      setIntegrityError(
+        err instanceof ApiError ? err.message : "Integritätsprüfung fehlgeschlagen.",
+      );
+    }
+  }
+
   if (!authChecked) {
     return (
       <div className="app">
@@ -271,6 +291,31 @@ export default function App() {
         </div>
       </header>
 
+      {!searching && packstreets.length > 0 && (
+        <div className="packstreet-tabs" role="tablist">
+          {packstreets.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="tab"
+              aria-selected={p.id === selectedPackstreetId}
+              className={
+                p.id === selectedPackstreetId
+                  ? "packstreet-tab is-active"
+                  : "packstreet-tab"
+              }
+              onClick={() => {
+                window.location.hash = "";
+                setSelectedPackstreetId(p.id);
+                void updateCurrentUser(undefined, p.id);
+              }}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {route.view === "history" ? (
         <GroupHistory
           groupId={route.id}
@@ -312,6 +357,69 @@ export default function App() {
           )}
           {isAdmin && <DataImport onImported={handleGroupsImported} />}
 
+          {isAdmin && (
+            <details
+              className="card integrity-check"
+              open={integrityOpen}
+              onToggle={(e) =>
+                setIntegrityOpen((e.target as HTMLDetailsElement).open)
+              }
+            >
+              <summary className="integrity-check__summary">
+                Integritätsprüfung
+              </summary>
+              <div className="integrity-check__body">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => void handleIntegrityCheck()}
+                >
+                  Prüfen
+                </button>
+                {integrityError && (
+                  <p className="banner banner--error">{integrityError}</p>
+                )}
+                {integrityResult && (
+                  <div className="integrity-check__result">
+                    {integrityResult.ok ? (
+                      <p className="banner banner--success">
+                        Keine Unstimmigkeiten gefunden.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="banner banner--error">
+                          {integrityResult.mismatches.length} Unstimmigkeit
+                          {integrityResult.mismatches.length !== 1 ? "en" : ""}{" "}
+                          gefunden:
+                        </p>
+                        <table className="overview-table">
+                          <thead>
+                            <tr>
+                              <th>Gruppe</th>
+                              <th>Artikeltyp</th>
+                              <th>Gespeichert</th>
+                              <th>Berechnet</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {integrityResult.mismatches.map((m, i) => (
+                              <tr key={i}>
+                                <td>{m.group_name}</td>
+                                <td>{m.item_type}</td>
+                                <td>{m.rental_quantity}</td>
+                                <td>{m.computed_quantity}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+
           <section className="groups">
             <div className="groups__toolbar">
               <input
@@ -336,30 +444,6 @@ export default function App() {
               </button>
             </div>
             {csvError && <p className="banner banner--error">{csvError}</p>}
-
-            {!searching && packstreets.length > 0 && (
-              <div className="packstreet-tabs" role="tablist">
-                {packstreets.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={p.id === selectedPackstreetId}
-                    className={
-                      p.id === selectedPackstreetId
-                        ? "packstreet-tab is-active"
-                        : "packstreet-tab"
-                    }
-                    onClick={() => {
-                      setSelectedPackstreetId(p.id);
-                      void updateCurrentUser(undefined, p.id);
-                    }}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
 
             <div className="groups__bar">
               <h2>

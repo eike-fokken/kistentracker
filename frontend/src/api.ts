@@ -6,6 +6,7 @@ import type {
   GroupImportResult,
   GroupOverview,
   GroupSummary,
+  IntegrityCheckResult,
   ItemTypeDef,
   RecentAction,
   RentAction,
@@ -365,4 +366,8 @@ export function updateActionQuantity(
     method: "PATCH",
     body: JSON.stringify({ quantity }),
   });
+}
+
+export function checkIntegrity(): Promise<IntegrityCheckResult> {
+  return request<IntegrityCheckResult>("/integrity-check");
 }

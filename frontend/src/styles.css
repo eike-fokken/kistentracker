@@ -471,6 +471,36 @@ select:focus {
   color: #92400e;
 }
 
+.banner--success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* --- Integrity check --- */
+
+.integrity-check {
+  margin-bottom: 1rem;
+}
+
+.integrity-check__summary {
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.integrity-check__body {
+  margin-top: 0.75rem;
+}
+
+.integrity-check__result {
+  margin-top: 0.75rem;
+}
+
+/* Packstreet tabs below header but above content */
+.app__header + .packstreet-tabs {
+  margin-bottom: 0.75rem;
+}
+
 .empty {
   color: var(--muted);
 }

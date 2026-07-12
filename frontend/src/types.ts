@@ -127,3 +127,16 @@ export interface GroupImportResult {
 export function quantityOf(group: GroupSummary, itemType: ItemType): number {
   return group.rentals.find((r) => r.item_type === itemType)?.quantity ?? 0;
 }
+
+export interface IntegrityMismatch {
+  group_id: number;
+  group_name: string;
+  item_type: string;
+  rental_quantity: number;
+  computed_quantity: number;
+}
+
+export interface IntegrityCheckResult {
+  ok: boolean;
+  mismatches: IntegrityMismatch[];
+}
