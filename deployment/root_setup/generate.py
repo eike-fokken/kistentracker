@@ -94,7 +94,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="If set, use Let's Encrypt with this email; otherwise 'tls internal' "
         "(self-signed).",
     )
-    parser.add_argument("--backend-port", type=int, default=8180)
+    parser.add_argument("--backend-port", type=int, default=8000)
 
     # Podman resources. Defaults match the podman-compose stack (project name
     # 'deployment'). Verify with `podman network ls` / `podman volume ls`.
@@ -262,7 +262,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             template_text = template_path.read_text(encoding="utf-8")
         except OSError as exc:
-            print(f"error: cannot read template {template_path}: {exc}", file=sys.stderr)
+            print(
+                f"error: cannot read template {template_path}: {exc}", file=sys.stderr
+            )
             return 1
         rendered = render(template_text, context, template_name)
         out_path = output_dir / output_name
@@ -306,41 +308,64 @@ def _print_instructions(
         print("  systemctl --user daemon-reload")
         print(f"  systemctl --user enable --now {unit}.socket")
         print("  # start at boot without an active login session:")
-        print("  loginctl enable-linger \"$USER\"")
+        print('  loginctl enable-linger "$USER"')
     elif run_as:
         print(
             f"Install as root; root binds the ports and Caddy runs as '{run_as}' "
             f"(uid {run_as_uid})."
         )
         print("Prerequisites (once):")
-        print(f"  sudo loginctl enable-linger {run_as}   # ensures /run/user/{run_as_uid} exists at boot")
-        print(f"  # {run_as} needs subuid/subgid ranges for rootless podman (usually preset):")
+        print(
+            f"  sudo loginctl enable-linger {run_as}   # ensures /run/user/{run_as_uid} exists at boot"
+        )
+        print(
+            f"  # {run_as} needs subuid/subgid ranges for rootless podman (usually preset):"
+        )
         print(f"  grep -q '^{run_as}:' /etc/subuid /etc/subgid || \\")
-        print(f"    sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 {run_as}")
+        print(
+            f"    sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 {run_as}"
+        )
         print()
         print("Install the files (root):")
-        print(f"  sudo install -D -m 0644 {output_dir / 'Caddyfile.socket'} {caddyfile}")
-        print(f"  sudo install -m 0644 {output_dir / (unit + '.socket')} /etc/systemd/system/")
-        print(f"  sudo install -m 0644 {output_dir / (unit + '.service')} /etc/systemd/system/")
+        print(
+            f"  sudo install -D -m 0644 {output_dir / 'Caddyfile.socket'} {caddyfile}"
+        )
+        print(
+            f"  sudo install -m 0644 {output_dir / (unit + '.socket')} /etc/systemd/system/"
+        )
+        print(
+            f"  sudo install -m 0644 {output_dir / (unit + '.service')} /etc/systemd/system/"
+        )
         print("  sudo systemctl daemon-reload")
         print(f"  sudo systemctl enable --now {unit}.socket")
         print()
         print(f"The stack must run in {run_as}'s ROOTLESS podman so it owns the")
         print("network/volumes the service references. Run compose as that user, e.g.:")
         print(f"  sudo machinectl shell {run_as}@ /bin/sh -c \\")
-        print("    'cd <path>/deployment && podman-compose up -d backend frontend-build'")
+        print(
+            "    'cd <path>/deployment && podman-compose up -d backend frontend-build'"
+        )
         print()
         print("Note: the units reference the network/volume names from that user's")
-        print("podman (verify with: sudo -u %s ... podman network ls / volume ls)." % run_as)
+        print(
+            "podman (verify with: sudo -u %s ... podman network ls / volume ls)."
+            % run_as
+        )
         return
     else:
         print("Install as root (review the files first):")
         print("  # 1. Put the Caddyfile where the service expects it:")
         print(f"  install -D -m 0644 {output_dir / 'Caddyfile.socket'} {caddyfile}")
-        print("  #    (on SELinux systems: restorecon -v <path> or add ',Z' to the mount)")
+        print(
+            "  #    (on SELinux systems: restorecon -v <path> or add ',Z' to the mount)"
+        )
         print("  # 2. Install the units:")
-        print(f"  install -m 0644 {output_dir / (unit + '.socket')} /etc/systemd/system/")
-        print(f"  install -m 0644 {output_dir / (unit + '.service')} /etc/systemd/system/")
+        print(
+            f"  install -m 0644 {output_dir / (unit + '.socket')} /etc/systemd/system/"
+        )
+        print(
+            f"  install -m 0644 {output_dir / (unit + '.service')} /etc/systemd/system/"
+        )
         print("  # 3. Reload and enable (the socket triggers the service):")
         print("  systemctl daemon-reload")
         print(f"  systemctl enable --now {unit}.socket")
