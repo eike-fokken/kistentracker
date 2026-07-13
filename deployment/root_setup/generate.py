@@ -37,6 +37,8 @@ TEMPLATES = {
     "caddy.socket.tmpl": "caddy.socket",
     "caddy.service.tmpl": "caddy.service",
     "Caddyfile.socket.tmpl": "Caddyfile.socket",
+    "backup-db.service.tmpl": "backup-db.service",
+    "backup-db.timer.tmpl": "backup-db.timer",
 }
 
 _TOKEN_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
@@ -116,6 +118,38 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Absolute path the service unit mounts as the Caddyfile. Defaults to "
         "/etc/caddy/<container-name>.Caddyfile.",
     )
+
+    # Backup service options.
+    parser.add_argument(
+        "--data-volume",
+        default="deployment_data",
+        help="Name of the Podman volume holding the SQLite database.",
+    )
+    parser.add_argument(
+        "--backup-dir",
+        required=True,
+        help="Host directory where backup files are written (required).",
+    )
+    parser.add_argument(
+        "--retention-days",
+        type=int,
+        default=30,
+        help="Remove backup files older than this many days.",
+    )
+    parser.add_argument(
+        "--backup-randomized-delay-sec",
+        type=int,
+        default=3600,
+        help="Max random delay (seconds) past the timer's OnCalendar moment "
+        "before the backup actually fires.",
+    )
+    parser.add_argument(
+        "--after-backend",
+        default="backend",
+        metavar="CONTAINER",
+        help="The backup unit will order itself After= this container to avoid "
+        "racing a podman-compose up on boot. Set to empty to skip.",
+    )
     return parser.parse_args(argv)
 
 
@@ -172,6 +206,13 @@ def build_context(args: argparse.Namespace) -> dict[str, str]:
     else:
         redir_hostport = "{host}:" + str(args.https_port)
 
+    # Backup service: whether to wait for the backend container on boot.
+    after_backend_line = (
+        f"After=podman-{args.after_backend}.service"
+        if args.after_backend
+        else ""
+    )
+
     return {
         "CONTAINER_NAME": args.container_name,
         "IMAGE": args.image,
@@ -194,6 +235,11 @@ def build_context(args: argparse.Namespace) -> dict[str, str]:
         "REDIR_HOSTPORT": redir_hostport,
         "USER_GROUP_LINES": user_group_lines,
         "RUNTIME_ENV_LINE": runtime_env_line,
+        "DATA_VOLUME": args.data_volume,
+        "BACKUP_DIR": args.backup_dir,
+        "RETENTION_DAYS": str(args.retention_days),
+        "RANDOMIZED_DELAY_SEC": str(args.backup_randomized_delay_sec),
+        "AFTER_BACKEND_LINE": after_backend_line,
     }
 
 
@@ -374,6 +420,32 @@ def _print_instructions(
     print("Bring up the backend + frontend build with podman-compose first, e.g.:")
     print("  podman-compose up -d backend frontend-build")
     print("(Do not also run the compose 'caddy' service; this unit replaces it.)")
+
+    # Backup units.
+    print()
+    print("--- Database backup (systemd timer) ---")
+    backup_dir = context["BACKUP_DIR"]
+    timer_unit = "backup-db.timer"
+    service_unit = "backup-db.service"
+    if user_mode:
+        print("Install the backup timer under your user manager:")
+        print(f"  mkdir -p ~/.config/systemd/user")
+        print(f"  install -m 0644 {output_dir / service_unit} ~/.config/systemd/user/")
+        print(f"  install -m 0644 {output_dir / timer_unit} ~/.config/systemd/user/")
+        print(f"  install -d -m 0755 {backup_dir}")
+        print("  systemctl --user daemon-reload")
+        print(f"  systemctl --user enable --now {timer_unit}")
+        print("  # Run once immediately to test:", f"systemctl --user start {service_unit}")
+    else:
+        print("Install the backup timer (system level, as root):")
+        print(f"  sudo install -d -m 0755 {backup_dir}")
+        print(f"  sudo install -m 0644 {output_dir / service_unit} /etc/systemd/system/")
+        print(f"  sudo install -m 0644 {output_dir / timer_unit} /etc/systemd/system/")
+        print("  sudo systemctl daemon-reload")
+        print(f"  sudo systemctl enable --now {timer_unit}")
+        print(f"  # Run once immediately to test:",
+              f"sudo systemctl start {service_unit}")
+    print(f"  # Inspect with: journalctl -u {service_unit}")
 
 
 if __name__ == "__main__":

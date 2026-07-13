@@ -1,0 +1,32 @@
+[Unit]
+Description=SQLite backup of Kistentracker database ({{DATA_VOLUME}} volume, podman)
+Documentation=https://github.com/anomalyco/kistentracker
+After=network-online.target
+{{AFTER_BACKEND_LINE}}
+
+[Service]
+Type=oneshot
+{{USER_GROUP_LINES}}Nice=10
+IOSchedulingClass=idle
+SyslogIdentifier=%N
+
+# Use SQLite's online backup API so the copy is consistent even while the
+# backend is running (the two containers share the data volume, so their
+# SQLite file locks coordinate). The volume is mounted read-write on purpose:
+# SQLite in WAL mode needs to access -wal/-shm sidecar files.
+ExecStart={{PODMAN}} run \
+    --rm \
+    -v {{DATA_VOLUME}}:/data \
+    -v {{BACKUP_DIR}}:/backup \
+    docker.io/library/python:3.13-slim \
+    python -u -c "import datetime, sqlite3, sys; \
+src=sqlite3.connect('/data/db.sqlite3'); \
+dst_path='/backup/db-{}.sqlite3'.format(datetime.datetime.now().strftime('%%Y%%m%%d-%%H%%M%%S')); \
+dst=sqlite3.connect(dst_path); src.backup(dst); dst.close(); src.close(); \
+print('Backup written to', dst_path, file=sys.stderr)"
+
+# Compress the latest uncompressed backup and remove the original.
+ExecStartPost=sh -c 'cd {{BACKUP_DIR}} && for f in db-*.sqlite3; do [ -f "$$f" ] && zip -mq "$$(basename "$$f" .sqlite3).zip" "$$f" && break; done'
+
+[Install]
+WantedBy=multi-user.target

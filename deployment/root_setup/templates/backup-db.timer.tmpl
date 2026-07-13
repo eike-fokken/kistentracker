@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily SQLite backup timer for Kistentracker
+
+[Timer]
+# Run hourly.
+OnCalendar=hourly
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

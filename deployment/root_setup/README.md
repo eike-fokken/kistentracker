@@ -55,7 +55,7 @@ a rootless **user** manager as long as both ports are unprivileged (>= 1024).
 Pass `--user` (and high ports):
 
 ```bash
-./generate.py --user --http-port 8080 --https-port 8443
+./generate.py --user --http-port 8080 --https-port 8443 --backup-dir /home/myuser/backups/kistentracker
 ```
 
 This adjusts the units for the user manager (`WantedBy=default.target`, drops the
@@ -71,7 +71,7 @@ previous run installed (stops/disables the units, removes the container, deletes
 old files) so you always get a clean slate.
 
 ```bash
-./generate.py --user --http-port 8080 --https-port 8443 --backend-port 8180
+./generate.py --user --http-port 8080 --https-port 8443 --backend-port 8180 --backup-dir /home/myuser/backups/kistentracker
 ./install-user.sh
 ```
 
