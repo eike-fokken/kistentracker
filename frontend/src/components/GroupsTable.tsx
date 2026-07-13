@@ -33,7 +33,7 @@ export function GroupsTable({
 
   async function handleDelete(group: GroupSummary) {
     const confirmed = window.confirm(
-      `Gruppe „${group.name}“ löschen? Eine Gruppe, die noch Artikel ausgeliehen hat, kann nicht gelöscht werden.`,
+      `Gruppe „${group.name}“ löschen? Eine Gruppe, die noch ausleihbare Artikel ausgeliehen hat, kann nicht gelöscht werden.`,
     );
     if (!confirmed) return;
 

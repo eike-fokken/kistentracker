@@ -752,7 +752,10 @@ def delete_group(request: HttpRequest, group_id: int) -> tuple[int, None]:
     """Delete a group. Admin only; blocked while any rentable item is still
     rented out (quantity > 0). Past audit-log entries are cascade-deleted."""
     group = get_object_or_404(Cookinggroup, pk=group_id)
-    if Rental.objects.filter(group=group, quantity__gt=0).exists():
+    if Rental.objects.filter(
+        group=group, quantity__gt=0,
+        item_type__in=ItemType.objects.filter(item_class=ItemClass.RENTABLE).values("key"),
+    ).exists():
         raise HttpError(
             409,
             "Eine Gruppe, die noch Artikel ausgeliehen hat, kann nicht gelöscht werden.",

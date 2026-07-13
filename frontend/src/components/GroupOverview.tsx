@@ -148,7 +148,7 @@ export function GroupOverview({
   async function handleDeleteGroup() {
     if (!data) return;
     const confirmed = window.confirm(
-      `Gruppe „${data.name}“ löschen? Eine Gruppe, die noch Artikel ausgeliehen hat, kann nicht gelöscht werden.`,
+      `Gruppe „${data.name}“ löschen? Eine Gruppe, die noch ausleihbare Artikel ausgeliehen hat, kann nicht gelöscht werden.`,
     );
     if (!confirmed) return;
     try {
