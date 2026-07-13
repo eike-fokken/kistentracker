@@ -1,7 +1,7 @@
 ## IMPORTANT
 
 NEVER edit files outside this directory!
-IGNORE the deployment directory!
+IGNORE the deployment directory, unless specifically asked for its contents.
 
 NEVER use `uv` and never suggest to use `uv`. This project exclusively uses `poetry`.
 
