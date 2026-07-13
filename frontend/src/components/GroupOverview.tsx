@@ -511,7 +511,7 @@ export function GroupOverview({
         <div className="modal-overlay" onClick={() => setShowCorrection(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2>Korrektur von Gruppe {data.internal_id}</h2>
+              <h2>Korrektur von Gruppe {data?.internal_id ?? "…"}</h2>
               <button
                 type="button"
                 className="btn btn--ghost"
