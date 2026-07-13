@@ -150,7 +150,7 @@ export function GroupHistory({ groupId, onBack }: Props) {
             <h2>
               {data.name} <span className="overview__number">#{data.internal_id}</span>
             </h2>
-            <p className="overview__subtitle">Ausgeben und Rückgaben im Zeitverlauf</p>
+            <p className="overview__subtitle">Ausgaben und Rücknahmen im Zeitverlauf</p>
           </header>
 
           {data.series.map((series) => (
