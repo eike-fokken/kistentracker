@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ApiError,
   deleteAction,
   deleteGroup,
+  getCurrentUser,
   getGroupOverview,
   listRecentActions,
   updateActionQuantity,
@@ -18,6 +19,7 @@ import type {
   RentalActionLog,
 } from "../types";
 import { OverviewItemRow } from "./OverviewItemRow";
+import type { OverviewItemRowHandle } from "./OverviewItemRow";
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString();
@@ -71,6 +73,7 @@ interface Props {
   isAdmin: boolean;
   packstreets: Packstreet[];
   showConsumables: boolean;
+  preferRent: boolean;
   onBack: () => void;
   onViewHistory: () => void;
   onGroupChanged: (group: GroupSummary) => void;
@@ -82,6 +85,7 @@ export function GroupOverview({
   isAdmin,
   packstreets,
   showConsumables: showConsumablesProp,
+  preferRent: preferRentProp,
   onBack,
   onViewHistory,
   onGroupChanged,
@@ -99,6 +103,7 @@ export function GroupOverview({
   const [editError, setEditError] = useState<string | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
   const [showConsumables, setShowConsumables] = useState(showConsumablesProp);
+  const [preferRent, setPreferRent] = useState(preferRentProp);
 
   const [correctionActions, setCorrectionActions] = useState<RecentAction[] | null>(null);
   const [correctionLoading, setCorrectionLoading] = useState(false);
@@ -118,6 +123,41 @@ export function GroupOverview({
   useEffect(() => {
     setShowConsumables(showConsumablesProp);
   }, [showConsumablesProp]);
+
+  useEffect(() => {
+    setPreferRent(preferRentProp);
+  }, [preferRentProp]);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then((user) => {
+        setShowConsumables(user.show_consumables);
+        setPreferRent(user.prefer_rent);
+      })
+      .catch(() => {
+        /* ignore — keep the prop values */
+      });
+  }, []);
+
+  const firstRowRef = useRef<OverviewItemRowHandle | null>(null);
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (data && !focusedRef.current) {
+      focusedRef.current = true;
+      if (preferRent) {
+        firstRowRef.current?.focusRent();
+      } else {
+        firstRowRef.current?.focusReturn();
+      }
+    }
+  }, [data, preferRent]);
+
+  useEffect(() => {
+    if (!data) {
+      focusedRef.current = false;
+    }
+  }, [data]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -399,6 +439,19 @@ export function GroupOverview({
                 ? "Verbrauchsartikel ausblenden"
                 : "Verbrauchsartikel anzeigen"}
             </button>
+            <button
+              type="button"
+              className={`btn ${preferRent ? "btn--primary" : "btn--ghost"}`}
+              onClick={() => {
+                const next = !preferRent;
+                setPreferRent(next);
+                void updateCurrentUser(undefined, next);
+              }}
+            >
+              {preferRent
+                ? "Ausgeben bevorzugt"
+                : "Zurücknehmen bevorzugt"}
+            </button>
           </div>
 
           {isAdmin && editing && (
@@ -470,9 +523,10 @@ export function GroupOverview({
             <tbody>
               {data.items
                 .filter((it) => showConsumables || it.item_class !== "consumable")
-                .map((item) => (
+                .map((item, index) => (
                   <OverviewItemRow
                     key={item.item_type}
+                    ref={index === 0 ? firstRowRef : undefined}
                     groupId={groupId}
                     item={item}
                     onUpdated={handleUpdated}

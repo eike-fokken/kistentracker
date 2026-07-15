@@ -5,6 +5,7 @@ export interface CurrentUser {
   username: string;
   is_admin: boolean;
   show_consumables: boolean;
+  prefer_rent: boolean;
   selected_packstreet_id: number | null;
 }
 

@@ -144,11 +144,15 @@ export function getCurrentUser(): Promise<CurrentUser> {
 
 export function updateCurrentUser(
   show_consumables?: boolean,
+  prefer_rent?: boolean,
   selected_packstreet_id?: number | null,
 ): Promise<CurrentUser> {
   const body: Record<string, unknown> = {};
   if (show_consumables !== undefined) {
     body.show_consumables = show_consumables;
+  }
+  if (prefer_rent !== undefined) {
+    body.prefer_rent = prefer_rent;
   }
   if (selected_packstreet_id !== undefined) {
     body.selected_packstreet_id = selected_packstreet_id;

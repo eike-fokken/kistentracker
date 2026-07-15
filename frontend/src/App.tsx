@@ -46,6 +46,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [showConsumables, setShowConsumables] = useState(true);
+  const [preferRent, setPreferRent] = useState(true);
 
   const [packstreets, setPackstreets] = useState<Packstreet[]>([]);
   const [itemTypes, setItemTypes] = useState<ItemTypeDef[]>([]);
@@ -76,6 +77,7 @@ export default function App() {
     setIsAdmin(user.is_admin);
     setUsername(user.username);
     setShowConsumables(user.show_consumables);
+    setPreferRent(user.prefer_rent);
     if (user.selected_packstreet_id !== null) {
       setSelectedPackstreetId(user.selected_packstreet_id);
     }
@@ -311,7 +313,7 @@ export default function App() {
               onClick={() => {
                 window.location.hash = "";
                 setSelectedPackstreetId(p.id);
-                void updateCurrentUser(undefined, p.id);
+                void updateCurrentUser(undefined, undefined, p.id);
               }}
             >
               {p.name}
@@ -319,6 +321,17 @@ export default function App() {
           ))}
         </div>
       )}
+
+      <div className="groups__toolbar">
+        <input
+          type="search"
+          className="groups__search"
+          value={search}
+          placeholder="Gruppenname oder -ID suchen…"
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Gruppen durchsuchen"
+        />
+      </div>
 
       {route.view === "history" ? (
         <GroupHistory
@@ -333,6 +346,7 @@ export default function App() {
           isAdmin={isAdmin}
           packstreets={packstreets}
           showConsumables={showConsumables}
+          preferRent={preferRent}
           onBack={() => {
             window.location.hash = "";
           }}
@@ -430,19 +444,6 @@ export default function App() {
 
           <section className="groups">
             <div className="groups__toolbar">
-              <input
-                type="search"
-                className="groups__search"
-                value={search}
-                placeholder="Gruppenname oder -ID suchen…"
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && groups.length === 1) {
-                    window.location.hash = `/group/${groups[0].id}`;
-                  }
-                }}
-                aria-label="Gruppen durchsuchen"
-              />
               <button
                 type="button"
                 className="btn btn--ghost"
