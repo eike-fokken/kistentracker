@@ -329,9 +329,38 @@ export default function App() {
           value={search}
           placeholder="Gruppenname oder -ID suchen…"
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && groups.length === 1) {
+              window.location.hash = `/group/${groups[0].id}`;
+            }
+          }}
           aria-label="Gruppen durchsuchen"
         />
       </div>
+
+      {searching && route.view !== "list" && (
+        <section className="groups">
+          <div className="groups__bar">
+            <h2>{`Suchergebnisse für „${debouncedSearch.trim()}“`}</h2>
+          </div>
+          {error && <p className="banner banner--error">{error}</p>}
+          {!error && groups.length === 0 && (
+            <p className="empty">Keine Gruppen gefunden.</p>
+          )}
+          {groups.length > 0 && (
+            <GroupsTable
+              groups={groups}
+              itemTypes={itemTypes.filter((it) => it.item_class !== "consumable")}
+              showPackstreet={true}
+              isAdmin={isAdmin}
+              onOpenOverview={(group) => {
+                window.location.hash = `/group/${group.id}`;
+              }}
+              onDeleteGroup={(group) => handleGroupDeleted(group.id)}
+            />
+          )}
+        </section>
+      )}
 
       {route.view === "history" ? (
         <GroupHistory
