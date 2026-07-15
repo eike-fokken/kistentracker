@@ -331,6 +331,8 @@ export default function App() {
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && groups.length === 1) {
+              setSearch("");
+              setDebouncedSearch("");
               window.location.hash = `/group/${groups[0].id}`;
             }
           }}
