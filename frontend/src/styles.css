@@ -24,7 +24,7 @@ body {
 }
 
 .app {
-  width: 90%;
+  width: clamp(20rem, 90%, 80rem);
   margin: 0 auto;
   padding: 2rem 1rem 4rem;
 }
@@ -155,6 +155,7 @@ body {
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 1.25rem;
+  min-width: 36rem;
 }
 
 .groups-table th,
@@ -874,5 +875,198 @@ select:focus {
   border-radius: 6px;
   font-size: inherit;
   text-align: right;
+}
+
+/* --- Table scroll wrapper for responsive overflow --- */
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll .groups-table {
+  min-width: 36rem;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 48rem) {
+  .app {
+    padding: 1rem 0.75rem 3rem;
+  }
+
+  .app__titlebar h1 {
+    font-size: 1.35rem;
+  }
+
+  .overview__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+    font-size: 1.4rem;
+  }
+
+  .overview__subtitle {
+    font-size: 1.1rem;
+    margin-left: 0;
+  }
+
+  .overview-table th,
+  .overview-table td,
+  .overview-table thead th {
+    font-size: 1.15rem;
+  }
+
+  .overview-table th:first-child,
+  .overview-table td:first-child {
+    width: auto;
+  }
+
+  .groups-table {
+    min-width: 28rem;
+  }
+
+  .groups-table th.num,
+  .groups-table td.num {
+    font-size: 1.2rem;
+  }
+
+  .groups-table th,
+  .groups-table td {
+    padding: 0.45rem 0.5rem;
+  }
+
+  .create-group__row {
+    flex-direction: column;
+  }
+
+  .create-group__row input {
+    flex: none;
+  }
+
+  .history__dates {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .history__date-label {
+    font-size: 1.15rem;
+  }
+
+  .history__date-label .input {
+    width: 10rem;
+  }
+
+  .row-actions {
+    gap: 0.3rem 0.6rem;
+  }
+
+  .row-actions__group {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .action-log__item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .action-log__time {
+    font-size: 0.85rem;
+  }
+
+  .modal {
+    padding: 1rem;
+    max-width: 95vw;
+  }
+
+  .correction__row-right {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .correction__list .action-log__item {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+}
+
+@media (max-width: 32rem) {
+  .app__titlebar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .app__header h1 {
+    font-size: 1.25rem;
+  }
+
+  .user-badge__name {
+    max-width: 8rem;
+  }
+
+  .overview__header {
+    font-size: 1.15rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .overview__subtitle {
+    font-size: 0.95rem;
+  }
+
+  .overview__actions .btn {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .groups-table {
+    min-width: 24rem;
+  }
+
+  .groups-table th,
+  .groups-table td {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  .groups-table th.num,
+  .groups-table td.num {
+    font-size: 1rem;
+  }
+
+  .groups-table thead th {
+    font-size: 0.7rem;
+  }
+
+  .overview-table th,
+  .overview-table td,
+  .overview-table thead th {
+    font-size: 1rem;
+  }
+
+  .row-actions input[type="number"] {
+    width: 3.5rem;
+  }
+
+  .row-actions__group {
+    flex-wrap: wrap;
+  }
+
+  .groups__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .packstreet-tab {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.65rem;
+  }
+
+  .card {
+    padding: 0.75rem;
+  }
 }
 

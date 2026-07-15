@@ -51,6 +51,7 @@ export function GroupsTable({
   return (
     <>
       {deleteError && <p className="banner banner--error">{deleteError}</p>}
+      <div className="table-scroll">
       <table className="groups-table">
         <thead>
           <tr>
@@ -106,6 +107,7 @@ export function GroupsTable({
           ))}
         </tbody>
       </table>
+      </div>
     </>
   );
 }

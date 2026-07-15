@@ -414,6 +414,7 @@ export default function App() {
                           {integrityResult.mismatches.length !== 1 ? "en" : ""}{" "}
                           gefunden:
                         </p>
+                        <div className="table-scroll">
                         <table className="overview-table">
                           <thead>
                             <tr>
@@ -434,6 +435,7 @@ export default function App() {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       </>
                     )}
                   </div>

@@ -512,6 +512,7 @@ export function GroupOverview({
             </div>
           )}
 
+          <div className="table-scroll">
           <table className="groups-table overview-table">
             <thead>
               <tr>
@@ -534,6 +535,7 @@ export function GroupOverview({
                 ))}
             </tbody>
           </table>
+          </div>
 
           <section className="action-log">
             <h3>Letzte Aktivitäten</h3>
