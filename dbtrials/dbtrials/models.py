@@ -52,6 +52,10 @@ class User(AbstractUser):
         default=True,
     )
 
+    prefer_rent = BooleanField(
+        default=True,
+    )
+
     selected_packstreet = ForeignKey(
         "Packstreet",
         null=True,

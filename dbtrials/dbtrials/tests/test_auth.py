@@ -56,6 +56,7 @@ class CookieAuthTests(TestCase):
                 "username": USERNAME,
                 "is_admin": True,
                 "show_consumables": True,
+                "prefer_rent": True,
                 "selected_packstreet_id": None,
             },
         )
@@ -88,6 +89,7 @@ class CookieAuthTests(TestCase):
                 "username": USERNAME,
                 "is_admin": True,
                 "show_consumables": True,
+                "prefer_rent": True,
                 "selected_packstreet_id": None,
             },
         )
@@ -166,6 +168,7 @@ class BearerAuthTests(TestCase):
                 "username": USERNAME,
                 "is_admin": True,
                 "show_consumables": True,
+                "prefer_rent": True,
                 "selected_packstreet_id": None,
             },
         )
