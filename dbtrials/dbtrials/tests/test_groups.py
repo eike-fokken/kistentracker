@@ -207,7 +207,7 @@ class GroupFeatureTests(TestCase):
         self.assertEqual(response["Content-Type"], "text/csv")
         rows = response.content.decode().splitlines()
         self.assertEqual(
-            rows[0], "Packstraße,Kochgruppen-ID,Gruppenname,Computer,Flipchart"
+            rows[0], "Packstraße,Kochgruppen-ID,Gruppenname,Kiste,Computer,Flipchart"
         )
         # Alpha before Beta; within Alpha, numeric order 2 before 10.
         self.assertEqual(rows[1].split(",")[:3], ["Alpha", "A-id", "Two"])

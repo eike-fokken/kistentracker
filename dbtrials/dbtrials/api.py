@@ -27,12 +27,14 @@ from ninja_jwt.controller import NinjaJWTDefaultController
 from dbtrials.models import (
     ActionType,
     Cookinggroup,
+    Crate,
     ItemClass,
     ItemType,
     Packstreet,
     Rental,
     RentalAction,
 )
+from dbtrials.grai_helpers import validate_grai
 from dbtrials.permissions import (
     AllowAny,
     IsAdmin,
@@ -43,6 +45,8 @@ from dbtrials.permissions import (
 from dbtrials.schemas import (
     ChangeQuantityIn,
     CookinggroupIn,
+    CrateScanIn,
+    CrateScanOut,
     GroupHistoryOut,
     GroupImportResultOut,
     GroupOverviewOut,
@@ -879,6 +883,150 @@ def change_quantity(
     group.refresh_from_db()
     _validate_after_mutation()
     return _group_summary(group)
+
+
+@router.post(
+    "/groups/{group_id}/scan-crate",
+    response=CrateScanOut,
+)
+@require_permissions(IsAuthenticated)
+def scan_crate(
+    request: HttpRequest, group_id: int, payload: CrateScanIn
+) -> dict[str, Any]:
+    """Scan a crate barcode to rent it out to a group or return it to stock.
+
+    The barcode is validated as a GRAI. The crate is created on first sighting.
+    Rescans within 30 seconds against the same group/stock are rejected as
+    double-scan, otherwise processed with a warning.
+    """
+    try:
+        validate_grai(payload.barcode)
+    except ValueError as exc:
+        raise HttpError(400, str(exc))
+
+    if payload.action not in (ActionType.RENT, ActionType.RETURN):
+        raise HttpError(400, "Nur Ausleihe oder Rückgabe ist erlaubt.")
+
+    group = get_object_or_404(Cookinggroup, pk=group_id)
+    if group.packstreet.is_stock:
+        raise HttpError(
+            400, "Aktionen für die Lager-Gruppe sind nicht erlaubt."
+        )
+
+    stock_group = get_object_or_404(
+        Cookinggroup.objects.select_related("packstreet"),
+        name="Lager",
+    )
+
+    item = get_object_or_404(ItemType, key="kiste")
+
+    crate, crate_was_created = Crate.objects.get_or_create(
+        barcode=payload.barcode,
+    )
+    warning: str | None = None
+    now = timezone.now()
+
+    if not crate_was_created:
+        elapsed = (
+            (now - crate.last_seen_at).total_seconds()
+            if crate.last_seen_at is not None
+            else 999
+        )
+    else:
+        elapsed = 0
+
+    if payload.action == ActionType.RENT:
+        if not crate_was_created:
+            if crate.last_seen_with == group:
+                if elapsed < 30:
+                    raise HttpError(
+                        425,
+                        "Diese Kiste wurde vor weniger als 30 Sekunden "
+                        "gescannt.",
+                    )
+                warning = "Kiste bereits bei dieser Gruppe."
+            elif crate.last_seen_with is not None and not (
+                crate.last_seen_with.packstreet.is_stock
+            ):
+                warning = (
+                    f"Kiste zuletzt bei "
+                    f"{crate.last_seen_with.name} gesehen."
+                )
+
+        with transaction.atomic():
+            RentalAction.objects.create(
+                group=group,
+                user=getattr(request, "auth", None),
+                action=ActionType.RENT,
+                item_type=item.key,
+                quantity=1,
+            )
+            rental, _created_rental = (
+                Rental.objects.select_for_update().get_or_create(
+                    group=group, item_type=item.key,
+                )
+            )
+            rental.quantity += 1
+            rental.save(update_fields=["quantity"])
+
+            crate.last_seen_with = group
+            crate.last_seen_at = now
+            crate.save(update_fields=["last_seen_with", "last_seen_at"])
+    else:
+        if not crate_was_created:
+            if crate.last_seen_with == stock_group:
+                if elapsed < 30:
+                    raise HttpError(
+                        425,
+                        "Diese Kiste wurde vor weniger als 30 Sekunden "
+                        "gescannt.",
+                    )
+                warning = "Kiste bereits im Lager."
+            elif crate.last_seen_with is not None and (
+                crate.last_seen_with != group
+            ):
+                warning = (
+                    f"Kiste zuletzt bei "
+                    f"{crate.last_seen_with.name} gesehen."
+                )
+
+        with transaction.atomic():
+            RentalAction.objects.create(
+                group=group,
+                user=getattr(request, "auth", None),
+                action=ActionType.RETURN,
+                item_type=item.key,
+                quantity=1,
+            )
+            rental, _created_rental = (
+                Rental.objects.select_for_update().get_or_create(
+                    group=group, item_type=item.key,
+                )
+            )
+            rental.quantity -= 1
+            rental.save(update_fields=["quantity"])
+
+            crate.last_seen_with = stock_group
+            crate.last_seen_at = now
+            crate.save(update_fields=["last_seen_with", "last_seen_at"])
+
+    group.refresh_from_db()
+    _validate_after_mutation()
+
+    rental_after = Rental.objects.filter(
+        group=group, item_type=item.key
+    ).first()
+    quantity = rental_after.quantity if rental_after else 0
+
+    return {
+        "ok": True,
+        "action": payload.action.value,
+        "group_name": group.name,
+        "barcode": payload.barcode,
+        "crate_was_created": crate_was_created,
+        "warning": warning,
+        "quantity": quantity,
+    }
 
 
 @router.get(

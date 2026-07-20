@@ -204,3 +204,22 @@ class IntegrityCheckOut(Schema):
 
     ok: bool
     mismatches: list[IntegrityMismatchOut]
+
+
+class CrateScanIn(Schema):
+    """Input for scanning a crate barcode against a group."""
+
+    barcode: str
+    action: ActionType
+
+
+class CrateScanOut(Schema):
+    """Result of a crate barcode scan."""
+
+    ok: bool
+    action: str
+    group_name: str
+    barcode: str
+    crate_was_created: bool
+    warning: str | None
+    quantity: int
