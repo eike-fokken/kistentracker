@@ -113,6 +113,7 @@ class Packstreet(Model):
     """A physical packstreet that cooking groups are located in."""
 
     name = CharField(max_length=100, unique=True)
+    is_stock = BooleanField(default=False)
 
     class Meta:
         ordering = ["name"]
@@ -159,6 +160,26 @@ class Rental(Model):
 
     def __str__(self) -> str:
         return f"{self.group.name}: {self.quantity} x {self.item_type}"
+
+
+class Crate(Model):
+    """A physical crate identified by a barcode, tracked to the last group it was seen with."""
+
+    barcode = CharField(max_length=40, unique=True)
+    last_seen_with = ForeignKey(
+        Cookinggroup,
+        null=True,
+        blank=True,
+        on_delete=SET_NULL,
+        related_name="crates",
+    )
+    last_seen_at = DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["barcode"]
+
+    def __str__(self) -> str:
+        return self.barcode
 
 
 class RentalAction(Model):

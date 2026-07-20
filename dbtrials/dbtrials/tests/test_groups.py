@@ -61,7 +61,7 @@ class GroupFeatureTests(TestCase):
             "/api/packstreets", HTTP_AUTHORIZATION=self.user_header
         )
         self.assertEqual(listing.status_code, 200)
-        self.assertEqual([b["name"] for b in listing.json()], ["Alpha"])
+        self.assertEqual([b["name"] for b in listing.json()], ["Alpha", "Lager"])
 
         rename = self.client.put(
             f"/api/packstreets/{packstreet_id}",
@@ -128,7 +128,8 @@ class GroupFeatureTests(TestCase):
         self._create_group("First", "100", packstreet.pk)
         response = self.client.get("/api/groups", HTTP_AUTHORIZATION=self.user_header)
         self.assertEqual(response.status_code, 200)
-        group = response.json()[0]
+        groups = response.json()
+        group = next(g for g in groups if g["internal_id"] == "100")
         self.assertEqual(group["internal_id"], "100")
         self.assertEqual(group["packstreet"]["name"], "Main")
 

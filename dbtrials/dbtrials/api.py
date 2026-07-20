@@ -111,7 +111,11 @@ def _group_summary(group: Cookinggroup) -> dict[str, Any]:
         "id": group.pk,
         "name": group.name,
         "internal_id": group.internal_id,
-        "packstreet": {"id": group.packstreet_id, "name": group.packstreet.name},
+        "packstreet": {
+            "id": group.packstreet_id,
+            "name": group.packstreet.name,
+            "is_stock": group.packstreet.is_stock,
+        },
         "total_items": sum(r.quantity for r in rentals),
         "rentals": rentals,
     }
@@ -143,7 +147,11 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
         "id": group.pk,
         "name": group.name,
         "internal_id": group.internal_id,
-        "packstreet": {"id": group.packstreet_id, "name": group.packstreet.name},
+        "packstreet": {
+            "id": group.packstreet_id,
+            "name": group.packstreet.name,
+            "is_stock": group.packstreet.is_stock,
+        },
         "items": items,
         "recent_actions": recent_actions,
     }
@@ -299,6 +307,8 @@ def rename_packstreet(
     if not name:
         raise HttpError(400, "Packstraßenname darf nicht leer sein.")
     packstreet = get_object_or_404(Packstreet, pk=packstreet_id)
+    if packstreet.is_stock:
+        raise HttpError(400, "Die Lager-Packstraße kann nicht umbenannt werden.")
     if Packstreet.objects.filter(name=name).exclude(pk=packstreet_id).exists():
         raise HttpError(409, f"Eine Packstraße namens '{name}' existiert bereits.")
     packstreet.name = name
@@ -312,8 +322,11 @@ def rename_packstreet(
 )
 @require_permissions(IsAdmin)
 def delete_packstreet(request: HttpRequest, packstreet_id: int) -> tuple[int, None]:
-    """Delete a packstreet. Admin only; blocked while groups still use it."""
+    """Delete a packstreet. Admin only; blocked while groups still use it
+    or if it is the stock packstreet."""
     packstreet = get_object_or_404(Packstreet, pk=packstreet_id)
+    if packstreet.is_stock:
+        raise HttpError(400, "Die Lager-Packstraße kann nicht gelöscht werden.")
     try:
         packstreet.delete()
     except ProtectedError as exc:
@@ -439,6 +452,8 @@ def create_group(
             409, f"Eine Gruppe mit der ID „{internal_id}“ existiert bereits."
         )
     packstreet = get_object_or_404(Packstreet, pk=payload.packstreet_id)
+    if packstreet.is_stock:
+        raise HttpError(400, "In der Lager-Packstraße können keine Gruppen erstellt werden.")
     try:
         group = Cookinggroup.objects.create(
             name=name, internal_id=internal_id, packstreet=packstreet
@@ -707,7 +722,8 @@ def import_groups(
 def update_group(
     request: HttpRequest, group_id: int, payload: CookinggroupIn
 ) -> dict[str, Any]:
-    """Update a group's name, number and packstreet. Admin only."""
+    """Update a group's name, number and packstreet. Admin only.
+    The stock group cannot be modified."""
     name = payload.name.strip()
     internal_id = payload.internal_id.strip()
     if not name:
@@ -715,6 +731,8 @@ def update_group(
     if not internal_id:
         raise HttpError(400, "Kochgruppen-ID darf nicht leer sein.")
     group = get_object_or_404(Cookinggroup, pk=group_id)
+    if group.packstreet.is_stock:
+        raise HttpError(400, "Die Lager-Gruppe kann nicht bearbeitet werden.")
     if Cookinggroup.objects.filter(name=name).exclude(pk=group_id).exists():
         raise HttpError(409, f"Eine Gruppe namens „{name}“ existiert bereits.")
     if (
@@ -756,8 +774,11 @@ def get_group(request: HttpRequest, group_id: int) -> dict[str, Any]:
 @require_permissions(IsAdmin)
 def delete_group(request: HttpRequest, group_id: int) -> tuple[int, None]:
     """Delete a group. Admin only; blocked while any rentable item is still
-    rented out (quantity > 0). Past audit-log entries are cascade-deleted."""
+    rented out (quantity > 0) or if it is the stock group.
+    Past audit-log entries are cascade-deleted."""
     group = get_object_or_404(Cookinggroup, pk=group_id)
+    if group.packstreet.is_stock:
+        raise HttpError(400, "Die Lager-Gruppe kann nicht gelöscht werden.")
     if Rental.objects.filter(
         group=group, quantity__gt=0,
         item_type__in=ItemType.objects.filter(item_class=ItemClass.RENTABLE).values("key"),
@@ -799,6 +820,8 @@ def change_quantity(
 
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
+    if group.packstreet.is_stock:
+        raise HttpError(400, "Aktionen für die Lager-Gruppe sind nicht erlaubt.")
     if payload.quantity == 0:
         return _group_summary(group)
     item_type = ItemType.objects.filter(key=payload.item_type).first()

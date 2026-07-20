@@ -41,6 +41,7 @@ class PackstreetOut(Schema):
 
     id: int
     name: str
+    is_stock: bool
 
 
 class ItemTypeIn(Schema):
