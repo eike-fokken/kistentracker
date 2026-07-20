@@ -30,6 +30,7 @@ export interface RentalItem {
 export interface Packstreet {
   id: number;
   name: string;
+  is_stock: boolean;
 }
 
 /** A cooking group summary (matches `GroupSummaryOut`). */

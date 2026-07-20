@@ -12,10 +12,11 @@ interface Props {
   groupId: number;
   item: GroupOverviewItem;
   onUpdated: (group: GroupSummary) => void;
+  readonly?: boolean;
 }
 
 export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
-  function OverviewItemRow({ groupId, item, onUpdated }, ref) {
+  function OverviewItemRow({ groupId, item, onUpdated, readonly = false }, ref) {
     const [rentAmount, setRentAmount] = useState("0");
     const [returnAmount, setReturnAmount] = useState("0");
     const [busy, setBusy] = useState(false);
@@ -100,6 +101,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
           {item.quantity}
         </td>
         <td>
+          {!readonly && (
           <div className="row-actions">
             <div className="row-actions__group row-actions__group--rent">
               <input
@@ -152,6 +154,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
               </div>
             )}
           </div>
+          )}
           {returnExceeds && !error && (
             <p className="banner banner--warning">
               Achtung: die Gruppe hat nur {item.quantity} Stück ausgeliehen. Die

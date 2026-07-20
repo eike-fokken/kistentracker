@@ -14,10 +14,14 @@ export function CreateGroupForm({
   defaultPackstreetId,
   onCreated,
 }: Props) {
+  const nonStockPackstreets = packstreets.filter((p) => !p.is_stock);
+  const isDefaultStock = defaultPackstreetId != null
+    && packstreets.some((p) => p.id === defaultPackstreetId && p.is_stock);
+
   const [name, setName] = useState("");
   const [groupNumber, setGroupNumber] = useState("");
   const [packstreetId, setPackstreetId] = useState<number | "">(
-    defaultPackstreetId ?? "",
+    isDefaultStock ? "" : (defaultPackstreetId ?? ""),
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +66,7 @@ export function CreateGroupForm({
   return (
     <form className="card create-group" onSubmit={handleSubmit}>
       <h2>Neue Gruppe</h2>
-{packstreets.length === 0 ? (
+{nonStockPackstreets.length === 0 ? (
         <p className="empty">Erstelle zuerst eine Packstraße, bevor du Gruppen anlegst.</p>
       ) : (
         <div className="create-group__row">
@@ -91,7 +95,7 @@ export function CreateGroupForm({
             aria-label="Packstraße"
           >
             <option value="">Packstraße…</option>
-            {packstreets.map((p) => (
+            {nonStockPackstreets.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>

@@ -9,6 +9,7 @@ interface Props {
 }
 
 export function PackstreetManager({ packstreets, onChanged }: Props) {
+  const visiblePackstreets = packstreets.filter((p) => !p.is_stock);
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -102,11 +103,11 @@ export function PackstreetManager({ packstreets, onChanged }: Props) {
             </button>
           </form>
 
-          {packstreets.length === 0 ? (
+          {visiblePackstreets.length === 0 ? (
             <p className="empty">Noch keine Packstraßen.</p>
           ) : (
             <ul className="packstreets__list">
-              {packstreets.map((p) => (
+              {visiblePackstreets.map((p) => (
                 <li key={p.id} className="packstreets__item">
                   {editingId === p.id ? (
                     <>

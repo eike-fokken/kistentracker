@@ -391,7 +391,7 @@ export function GroupOverview({
           </header>
 
           <div className="overview__actions">
-            {isAdmin && !editing && (
+            {isAdmin && !editing && !data.packstreet.is_stock && (
               <button
                 type="button"
                 className="btn btn--ghost"
@@ -400,7 +400,7 @@ export function GroupOverview({
                 Bearbeiten
               </button>
             )}
-            {isAdmin && (
+            {isAdmin && !data.packstreet.is_stock && (
               <button
                 type="button"
                 className="btn btn--danger"
@@ -412,6 +412,7 @@ export function GroupOverview({
             {groupDeleteError && (
               <p className="banner banner--error">{groupDeleteError}</p>
             )}
+            {!data.packstreet.is_stock && (
             <button
               type="button"
               className="btn btn--ghost"
@@ -419,6 +420,8 @@ export function GroupOverview({
             >
               Diagramme anzeigen
             </button>
+            )}
+            {!data.packstreet.is_stock && (
             <button
               type="button"
               className={`btn ${showCorrection ? "btn--primary" : "btn--ghost"}`}
@@ -426,6 +429,7 @@ export function GroupOverview({
             >
               {showCorrection ? "Korrektur schließen" : "Korrektur"}
             </button>
+            )}
             <button
               type="button"
               className={`btn ${showConsumables ? "btn--ghost" : "btn--primary"}`}
@@ -485,7 +489,7 @@ export function GroupOverview({
                   aria-label="Packstraße"
                 >
                   <option value="">Packstraße…</option>
-                  {packstreets.map((p) => (
+                  {packstreets.filter((p) => !p.is_stock).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>
@@ -518,7 +522,7 @@ export function GroupOverview({
               <tr>
                 <th>Artikel</th>
                 <th className="num">Ausgeliehen</th>
-                <th>Ausgeben / Zurücknehmen</th>
+                {!data.packstreet.is_stock && <th>Ausgeben / Zurücknehmen</th>}
               </tr>
             </thead>
             <tbody>
@@ -531,6 +535,7 @@ export function GroupOverview({
                     groupId={groupId}
                     item={item}
                     onUpdated={handleUpdated}
+                    readonly={data.packstreet.is_stock}
                   />
                 ))}
             </tbody>

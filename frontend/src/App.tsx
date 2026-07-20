@@ -63,6 +63,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
+  const [navigateToStock, setNavigateToStock] = useState(false);
   const [integrityResult, setIntegrityResult] =
     useState<IntegrityCheckResult | null>(null);
   const [integrityOpen, setIntegrityOpen] = useState(false);
@@ -135,12 +136,17 @@ export default function App() {
 
   const loadPackstreets = useCallback(async () => {
     const loaded = await listPackstreets();
-    setPackstreets(loaded);
+    const sorted = [...loaded].sort((a, b) => {
+      if (a.is_stock) return 1;
+      if (b.is_stock) return -1;
+      return a.name.localeCompare(b.name);
+    });
+    setPackstreets(sorted);
     setSelectedPackstreetId((current) => {
-      if (current !== null && loaded.some((b) => b.id === current)) {
+      if (current !== null && sorted.some((b) => b.id === current)) {
         return current;
       }
-      return loaded[0]?.id ?? null;
+      return sorted[0]?.id ?? null;
     });
   }, []);
 
@@ -185,6 +191,18 @@ export default function App() {
       void refresh();
     }
   }, [authed, refresh, reloadNonce]);
+
+  useEffect(() => {
+    if (
+      navigateToStock &&
+      groups.length === 1 &&
+      groups[0].packstreet.id === selectedPackstreetId &&
+      packstreets.some((p) => p.id === selectedPackstreetId && p.is_stock)
+    ) {
+      window.location.hash = `#/group/${groups[0].id}`;
+      setNavigateToStock(false);
+    }
+  }, [groups, navigateToStock, selectedPackstreetId, packstreets]);
 
   // Replace a single group in local state after a rent/return/correct action.
   const handleGroupUpdated = useCallback((updated: GroupSummary) => {
@@ -311,9 +329,15 @@ export default function App() {
                   : "packstreet-tab"
               }
               onClick={() => {
-                window.location.hash = "";
-                setSelectedPackstreetId(p.id);
-                void updateCurrentUser(undefined, undefined, p.id);
+                if (p.is_stock) {
+                  setSelectedPackstreetId(p.id);
+                  setNavigateToStock(true);
+                  void updateCurrentUser(undefined, undefined, p.id);
+                } else {
+                  window.location.hash = "";
+                  setSelectedPackstreetId(p.id);
+                  void updateCurrentUser(undefined, undefined, p.id);
+                }
               }}
             >
               {p.name}
