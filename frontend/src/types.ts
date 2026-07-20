@@ -67,6 +67,7 @@ export interface RentalActionLog {
   item_type: ItemType;
   quantity: number;
   username: string | null;
+  barcode: string | null;
   timestamp: string;
 }
 
@@ -77,6 +78,7 @@ export interface RecentAction {
   item_type: ItemType;
   quantity: number;
   username: string | null;
+  barcode: string | null;
   timestamp: string;
 }
 

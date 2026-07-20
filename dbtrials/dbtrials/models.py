@@ -59,7 +59,6 @@ class User(AbstractUser):
     selected_packstreet = ForeignKey(
         "Packstreet",
         null=True,
-        blank=True,
         on_delete=SET_NULL,
         related_name="+",
     )
@@ -169,11 +168,10 @@ class Crate(Model):
     last_seen_with = ForeignKey(
         Cookinggroup,
         null=True,
-        blank=True,
         on_delete=SET_NULL,
         related_name="crates",
     )
-    last_seen_at = DateTimeField(null=True, blank=True)
+    last_seen_at = DateTimeField(null=True)
 
     class Meta:
         ordering = ["barcode"]
@@ -199,6 +197,7 @@ class RentalAction(Model):
     action = CharField(max_length=10, choices=ActionType.choices)
     item_type = CharField(max_length=50)
     quantity = IntegerField()
+    barcode = CharField(max_length=40, null=True)
     timestamp = DateTimeField(auto_now_add=True)
 
     class Meta:

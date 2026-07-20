@@ -145,6 +145,7 @@ class RentalActionOut(Schema):
     item_type: str
     quantity: int
     username: str | None
+    barcode: str | None
     timestamp: datetime
 
 

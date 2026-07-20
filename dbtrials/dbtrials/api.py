@@ -143,6 +143,7 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
             "item_type": action.item_type,
             "quantity": action.quantity,
             "username": action.user.get_username() if action.user else None,
+            "barcode": action.barcode,
             "timestamp": action.timestamp,
         }
         for action in group.actions.select_related("user")[:10]
@@ -960,6 +961,7 @@ def scan_crate(
                 action=ActionType.RENT,
                 item_type=item.key,
                 quantity=1,
+                barcode=payload.barcode,
             )
             rental, _created_rental = (
                 Rental.objects.select_for_update().get_or_create(
@@ -997,6 +999,7 @@ def scan_crate(
                 action=ActionType.RETURN,
                 item_type=item.key,
                 quantity=1,
+                barcode=payload.barcode,
             )
             rental, _created_rental = (
                 Rental.objects.select_for_update().get_or_create(
@@ -1067,6 +1070,7 @@ def recent_actions(
             "item_type": action.item_type,
             "quantity": action.quantity,
             "username": action.user.get_username() if action.user else None,
+            "barcode": action.barcode,
             "timestamp": action.timestamp,
         }
         for action in qs
