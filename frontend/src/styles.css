@@ -1070,3 +1070,96 @@ select:focus {
   }
 }
 
+/* --- User toggles (global header) --- */
+
+.user-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.user-toggle {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.user-toggle:hover {
+  border-color: var(--primary);
+}
+
+.user-toggle.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* --- Barcode view --- */
+
+.barcode-mode-banner {
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.barcode-mode-banner--rent {
+  background: #166534;
+  color: #fff;
+}
+
+.barcode-mode-banner--return {
+  background: #1e40af;
+  color: #fff;
+}
+
+.barcode-mode-banner__label {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.barcode-mode-banner__desc {
+  margin-top: 0.5rem;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.barcode-crate-count {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.barcode-input-area {
+  margin-bottom: 1rem;
+}
+
+.barcode-input {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.25rem;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.barcode-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.action-log__barcode {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-family: monospace;
+}
+

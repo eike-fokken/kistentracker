@@ -6,6 +6,7 @@ export interface CurrentUser {
   is_admin: boolean;
   show_consumables: boolean;
   prefer_rent: boolean;
+  barcode_view: boolean;
   selected_packstreet_id: number | null;
 }
 
@@ -143,4 +144,19 @@ export interface IntegrityMismatch {
 export interface IntegrityCheckResult {
   ok: boolean;
   mismatches: IntegrityMismatch[];
+}
+
+export interface CrateScanIn {
+  barcode: string;
+  action: ActionType;
+}
+
+export interface CrateScanOut {
+  ok: boolean;
+  action: string;
+  group_name: string;
+  barcode: string;
+  crate_was_created: boolean;
+  warning: string | null;
+  quantity: number;
 }

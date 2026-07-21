@@ -21,6 +21,7 @@ import { GroupOverview } from "./components/GroupOverview";
 import { GroupsTable } from "./components/GroupsTable";
 import { ItemTypeManager } from "./components/ItemTypeManager";
 import { LoginForm } from "./components/LoginForm";
+import { BarcodeView } from "./components/BarcodeView";
 
 type Route =
   | { view: "list" }
@@ -47,6 +48,7 @@ export default function App() {
   const [username, setUsername] = useState<string | null>(null);
   const [showConsumables, setShowConsumables] = useState(true);
   const [preferRent, setPreferRent] = useState(true);
+  const [barcodeView, setBarcodeView] = useState(false);
 
   const [packstreets, setPackstreets] = useState<Packstreet[]>([]);
   const [itemTypes, setItemTypes] = useState<ItemTypeDef[]>([]);
@@ -79,6 +81,7 @@ export default function App() {
     setUsername(user.username);
     setShowConsumables(user.show_consumables);
     setPreferRent(user.prefer_rent);
+    setBarcodeView(user.barcode_view);
     if (user.selected_packstreet_id !== null) {
       setSelectedPackstreetId(user.selected_packstreet_id);
     }
@@ -315,6 +318,46 @@ export default function App() {
         </div>
       </header>
 
+      <div className="user-toggles">
+        <button
+          type="button"
+          className={`user-toggle${showConsumables ? " is-active" : ""}`}
+          onClick={() => {
+            const next = !showConsumables;
+            setShowConsumables(next);
+            void updateCurrentUser(next);
+          }}
+        >
+          {showConsumables
+            ? "Verbrauchsartikel ein"
+            : "Verbrauchsartikel aus"}
+        </button>
+        <button
+          type="button"
+          className={`user-toggle${preferRent ? " is-active" : ""}`}
+          onClick={() => {
+            const next = !preferRent;
+            setPreferRent(next);
+            void updateCurrentUser(undefined, next);
+          }}
+        >
+          {preferRent
+            ? "Ausgeben bevorzugt"
+            : "Zurücknehmen bevorzugt"}
+        </button>
+        <button
+          type="button"
+          className={`user-toggle${barcodeView ? " is-active" : ""}`}
+          onClick={() => {
+            const next = !barcodeView;
+            setBarcodeView(next);
+            void updateCurrentUser(undefined, undefined, undefined, next);
+          }}
+        >
+          Barcode
+        </button>
+      </div>
+
       {!searching && packstreets.length > 0 && (
         <div className="packstreet-tabs" role="tablist">
           {packstreets.map((p) => (
@@ -396,24 +439,34 @@ export default function App() {
           }}
         />
       ) : route.view === "overview" ? (
-        <GroupOverview
-          groupId={route.id}
-          isAdmin={isAdmin}
-          packstreets={packstreets}
-          showConsumables={showConsumables}
-          preferRent={preferRent}
-          onBack={() => {
-            window.location.hash = "";
-          }}
-          onViewHistory={() => {
-            window.location.hash = `/group/${route.id}/history`;
-          }}
-          onGroupChanged={handleGroupUpdated}
-          onDeleted={(deletedId) => {
-            handleGroupDeleted(deletedId);
-            window.location.hash = "";
-          }}
-        />
+        !barcodeView ? (
+          <GroupOverview
+            groupId={route.id}
+            isAdmin={isAdmin}
+            packstreets={packstreets}
+            showConsumables={showConsumables}
+            preferRent={preferRent}
+            onBack={() => {
+              window.location.hash = "";
+            }}
+            onViewHistory={() => {
+              window.location.hash = `/group/${route.id}/history`;
+            }}
+            onGroupChanged={handleGroupUpdated}
+            onDeleted={(deletedId) => {
+              handleGroupDeleted(deletedId);
+              window.location.hash = "";
+            }}
+          />
+        ) : (
+          <BarcodeView
+            groupId={route.id}
+            preferRent={preferRent}
+            onBack={() => {
+              window.location.hash = "";
+            }}
+          />
+        )
       ) : (
         <>
           {isAdmin && (

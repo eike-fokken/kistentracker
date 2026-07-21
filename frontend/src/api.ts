@@ -1,5 +1,7 @@
 import type {
   ActionType,
+  CrateScanIn,
+  CrateScanOut,
   Packstreet,
   CurrentUser,
   GroupHistory,
@@ -146,6 +148,7 @@ export function updateCurrentUser(
   show_consumables?: boolean,
   prefer_rent?: boolean,
   selected_packstreet_id?: number | null,
+  barcode_view?: boolean,
 ): Promise<CurrentUser> {
   const body: Record<string, unknown> = {};
   if (show_consumables !== undefined) {
@@ -156,6 +159,9 @@ export function updateCurrentUser(
   }
   if (selected_packstreet_id !== undefined) {
     body.selected_packstreet_id = selected_packstreet_id;
+  }
+  if (barcode_view !== undefined) {
+    body.barcode_view = barcode_view;
   }
   return request<CurrentUser>("/me", {
     method: "PATCH",
@@ -379,4 +385,14 @@ export function updateActionQuantity(
 
 export function checkIntegrity(): Promise<IntegrityCheckResult> {
   return request<IntegrityCheckResult>("/integrity-check");
+}
+
+export function scanCrate(
+  groupId: number,
+  payload: CrateScanIn,
+): Promise<CrateScanOut> {
+  return request<CrateScanOut>(`/groups/${groupId}/scan-crate`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

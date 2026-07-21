@@ -4,11 +4,9 @@ import {
   ApiError,
   deleteAction,
   deleteGroup,
-  getCurrentUser,
   getGroupOverview,
   listRecentActions,
   updateActionQuantity,
-  updateCurrentUser,
   updateGroup,
 } from "../api";
 import type {
@@ -84,8 +82,8 @@ export function GroupOverview({
   groupId,
   isAdmin,
   packstreets,
-  showConsumables: showConsumablesProp,
-  preferRent: preferRentProp,
+  showConsumables,
+  preferRent,
   onBack,
   onViewHistory,
   onGroupChanged,
@@ -102,8 +100,6 @@ export function GroupOverview({
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
-  const [showConsumables, setShowConsumables] = useState(showConsumablesProp);
-  const [preferRent, setPreferRent] = useState(preferRentProp);
 
   const [correctionActions, setCorrectionActions] = useState<RecentAction[] | null>(null);
   const [correctionLoading, setCorrectionLoading] = useState(false);
@@ -119,25 +115,6 @@ export function GroupOverview({
   const [groupDeleteError, setGroupDeleteError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingQuantity, setEditingQuantity] = useState("");
-
-  useEffect(() => {
-    setShowConsumables(showConsumablesProp);
-  }, [showConsumablesProp]);
-
-  useEffect(() => {
-    setPreferRent(preferRentProp);
-  }, [preferRentProp]);
-
-  useEffect(() => {
-    getCurrentUser()
-      .then((user) => {
-        setShowConsumables(user.show_consumables);
-        setPreferRent(user.prefer_rent);
-      })
-      .catch(() => {
-        /* ignore — keep the prop values */
-      });
-  }, []);
 
   const firstRowRef = useRef<OverviewItemRowHandle | null>(null);
   const focusedRef = useRef(false);
@@ -430,32 +407,6 @@ export function GroupOverview({
               {showCorrection ? "Korrektur schließen" : "Korrektur"}
             </button>
             )}
-            <button
-              type="button"
-              className={`btn ${showConsumables ? "btn--ghost" : "btn--primary"}`}
-              onClick={() => {
-                const next = !showConsumables;
-                setShowConsumables(next);
-                void updateCurrentUser(next);
-              }}
-            >
-              {showConsumables
-                ? "Verbrauchsartikel ausblenden"
-                : "Verbrauchsartikel anzeigen"}
-            </button>
-            <button
-              type="button"
-              className={`btn ${preferRent ? "btn--primary" : "btn--ghost"}`}
-              onClick={() => {
-                const next = !preferRent;
-                setPreferRent(next);
-                void updateCurrentUser(undefined, next);
-              }}
-            >
-              {preferRent
-                ? "Ausgeben bevorzugt"
-                : "Zurücknehmen bevorzugt"}
-            </button>
           </div>
 
           {isAdmin && editing && (
