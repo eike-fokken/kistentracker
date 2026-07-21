@@ -3,63 +3,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getGroupOverview, scanCrate } from "../api";
 import type {
   GroupOverview as GroupOverviewData,
-  RentalActionLog,
 } from "../types";
-
-function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
-
-function describeAction(
-  entry: RentalActionLog,
-  labels: Record<string, string>,
-) {
-  const verb =
-    entry.action === "rent"
-      ? "ausgegeben"
-      : entry.action === "correct"
-        ? "korrigiert"
-        : "zurückgenommen";
-  const label = labels[entry.item_type] ?? entry.item_type;
-  const isCorrect = entry.action === "correct";
-  const isNegative = entry.quantity < 0;
-
-  const cssClass =
-    entry.action === "correct"
-      ? "action-log__verb--correct"
-      : entry.action === "rent"
-        ? "action-log__verb--rent"
-        : "action-log__verb--return";
-
-  return (
-    <>
-      <span className={cssClass}>
-        {verb}
-      </span>{" "}
-      {isNegative && <span className="action-log__verb--minus">−</span>}
-      <span
-        className={
-          isNegative
-            ? "action-log__verb--minus"
-            : isCorrect && entry.quantity >= 0
-              ? "action-log__verb--plus"
-              : ""
-        }
-      >
-        {Math.abs(entry.quantity)}
-      </span>{" "}
-      × {label}
-    </>
-  );
-}
+import { CorrectionModal } from "./CorrectionModal";
+import { describeAction, formatTimestamp } from "./utils";
 
 interface Props {
   groupId: number;
   preferRent: boolean;
   onBack: () => void;
+  onViewHistory: () => void;
 }
 
-export function BarcodeView({ groupId, preferRent, onBack }: Props) {
+export function BarcodeView({ groupId, preferRent, onBack, onViewHistory }: Props) {
   const [data, setData] = useState<GroupOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +25,8 @@ export function BarcodeView({ groupId, preferRent, onBack }: Props) {
   const [scanWarning, setScanWarning] = useState<string | null>(null);
   const [scanSuccess, setScanSuccess] = useState<string | null>(null);
   const [crateQuantity, setCrateQuantity] = useState<number | null>(null);
+
+  const [showCorrection, setShowCorrection] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -112,6 +69,12 @@ export function BarcodeView({ groupId, preferRent, onBack }: Props) {
     const timer = window.setTimeout(() => setScanSuccess(null), 3000);
     return () => window.clearTimeout(timer);
   }, [scanSuccess]);
+
+  const handleUpdated = useCallback(() => {
+      void load();
+    },
+    [load],
+  );
 
   async function handleScan() {
     const value = barcode.trim();
@@ -169,6 +132,27 @@ export function BarcodeView({ groupId, preferRent, onBack }: Props) {
             <span className="overview__name">{data.name}</span>
             <span className="overview__subtitle">{data.packstreet.name}</span>
           </header>
+
+          {!data.packstreet.is_stock && (
+            <div className="overview__actions">
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={onViewHistory}
+              >
+                Diagramme anzeigen
+              </button>
+              <button
+                type="button"
+                className={`btn ${showCorrection ? "btn--primary" : "btn--ghost"}`}
+                onClick={() =>
+                  showCorrection ? setShowCorrection(false) : setShowCorrection(true)
+                }
+              >
+                {showCorrection ? "Korrektur schließen" : "Korrektur"}
+              </button>
+            </div>
+          )}
 
           <div
             className={`barcode-mode-banner barcode-mode-banner--${preferRent ? "rent" : "return"}`}
@@ -249,6 +233,17 @@ export function BarcodeView({ groupId, preferRent, onBack }: Props) {
             )}
           </section>
         </>
+      )}
+
+      {showCorrection && data && (
+        <CorrectionModal
+          groupId={groupId}
+          isAdmin={false}
+          internalId={data.internal_id}
+          labels={labels}
+          onClose={() => setShowCorrection(false)}
+          onGroupChanged={handleUpdated}
+        />
       )}
     </section>
   );

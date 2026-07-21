@@ -465,6 +465,9 @@ export default function App() {
             onBack={() => {
               window.location.hash = "";
             }}
+            onViewHistory={() => {
+              window.location.hash = `/group/${route.id}/history`;
+            }}
           />
         )
       ) : (
