@@ -209,6 +209,7 @@ def cookie_login(request: HttpRequest, payload: LoginIn) -> tuple[int, dict[str,
         "is_admin": user.is_admin,
         "show_consumables": user.show_consumables,
         "prefer_rent": user.prefer_rent,
+        "barcode_view": user.barcode_view,
         "selected_packstreet_id": user.selected_packstreet_id,
     }
 
@@ -238,6 +239,7 @@ def current_user(request: HttpRequest) -> dict[str, Any]:
         "is_admin": user.is_admin,
         "show_consumables": user.show_consumables,
         "prefer_rent": user.prefer_rent,
+        "barcode_view": user.barcode_view,
         "selected_packstreet_id": user.selected_packstreet_id,
     }
 
@@ -257,6 +259,9 @@ def update_user(request: HttpRequest, payload: UserUpdateIn) -> dict[str, Any]:
     if payload.prefer_rent is not None:
         user.prefer_rent = payload.prefer_rent
         changed.append("prefer_rent")
+    if payload.barcode_view is not None:
+        user.barcode_view = payload.barcode_view
+        changed.append("barcode_view")
     if payload.selected_packstreet_id is not None:
         packstreet = get_object_or_404(Packstreet, pk=payload.selected_packstreet_id)
         user.selected_packstreet = packstreet
@@ -268,6 +273,7 @@ def update_user(request: HttpRequest, payload: UserUpdateIn) -> dict[str, Any]:
         "is_admin": user.is_admin,
         "show_consumables": user.show_consumables,
         "prefer_rent": user.prefer_rent,
+        "barcode_view": user.barcode_view,
         "selected_packstreet_id": user.selected_packstreet_id,
     }
 

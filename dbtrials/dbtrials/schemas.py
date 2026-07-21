@@ -12,6 +12,7 @@ class UserOut(Schema):
     is_admin: bool
     show_consumables: bool
     prefer_rent: bool
+    barcode_view: bool
     selected_packstreet_id: int | None
 
 
@@ -20,6 +21,7 @@ class UserUpdateIn(Schema):
 
     show_consumables: bool | None = None
     prefer_rent: bool | None = None
+    barcode_view: bool | None = None
     selected_packstreet_id: int | None = None
 
 

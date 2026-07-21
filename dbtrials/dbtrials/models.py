@@ -63,6 +63,10 @@ class User(AbstractUser):
         related_name="+",
     )
 
+    barcode_view = BooleanField(
+        default=False,
+    )
+
     objects = UserManager()  # type: ignore[misc]
 
     @property

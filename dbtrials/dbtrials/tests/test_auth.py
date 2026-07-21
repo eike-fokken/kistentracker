@@ -57,6 +57,7 @@ class CookieAuthTests(TestCase):
                 "is_admin": True,
                 "show_consumables": True,
                 "prefer_rent": True,
+                "barcode_view": False,
                 "selected_packstreet_id": None,
             },
         )
@@ -90,6 +91,7 @@ class CookieAuthTests(TestCase):
                 "is_admin": True,
                 "show_consumables": True,
                 "prefer_rent": True,
+                "barcode_view": False,
                 "selected_packstreet_id": None,
             },
         )
@@ -169,6 +171,7 @@ class BearerAuthTests(TestCase):
                 "is_admin": True,
                 "show_consumables": True,
                 "prefer_rent": True,
+                "barcode_view": False,
                 "selected_packstreet_id": None,
             },
         )
@@ -325,3 +328,17 @@ class UserPreferencesTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_patch_me_sets_barcode_view(self) -> None:
+        token = self._login_and_csrf()
+        response = self.client.patch(
+            "/api/me",
+            data={"barcode_view": True},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["barcode_view"])
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.barcode_view)
