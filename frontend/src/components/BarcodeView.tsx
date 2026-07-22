@@ -84,6 +84,7 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory }: Prop
     setScanError(null);
     setScanWarning(null);
     setScanSuccess(null);
+    setBarcode("");
 
     try {
       const result = await scanCrate(groupId, {
@@ -98,7 +99,6 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory }: Prop
           `Kiste ${result.barcode} ${preferRent ? "ausgegeben" : "zurückgenommen"}. Bestand: ${result.quantity}`,
         );
       }
-      setBarcode("");
       void load();
     } catch (err) {
       setScanError(

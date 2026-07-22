@@ -948,8 +948,8 @@ def scan_crate(
                 if elapsed < 30:
                     raise HttpError(
                         425,
-                        "Diese Kiste wurde vor weniger als 30 Sekunden "
-                        "gescannt.",
+                        f"Kiste {payload.barcode} wurde vor weniger als "
+                        "30 Sekunden gescannt.",
                     )
                 warning = "Kiste bereits bei dieser Gruppe."
             elif crate.last_seen_with is not None and not (
@@ -986,8 +986,8 @@ def scan_crate(
                 if elapsed < 30:
                     raise HttpError(
                         425,
-                        "Diese Kiste wurde vor weniger als 30 Sekunden "
-                        "gescannt.",
+                        f"Kiste {payload.barcode} wurde vor weniger als "
+                        "30 Sekunden gescannt.",
                     )
                 warning = "Kiste bereits im Lager."
             elif crate.last_seen_with is not None and (
