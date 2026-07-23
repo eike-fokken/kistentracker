@@ -54,7 +54,20 @@ export function SearchResults({
 
   if (loading) return <p className="empty">Suche…</p>;
   if (error) return <p className="banner banner--error">{error}</p>;
-  if (groups.length === 0) return <p className="empty">Keine Ergebnisse für die Suche.</p>;
+  if (groups.length === 0) return (
+    <section className="groups">
+      <button
+        type="button"
+        className="link"
+        onClick={() => {
+          window.location.hash = "";
+        }}
+      >
+        ← Zurück zu allen Gruppen
+      </button>
+      <p className="empty">Keine Ergebnisse für die Suche.</p>
+    </section>
+  );
 
   return (
     <section className="groups">
