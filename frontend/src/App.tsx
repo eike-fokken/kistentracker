@@ -422,7 +422,7 @@ export default function App() {
             if (e.key === "Enter") {
               const term = (e.target as HTMLInputElement).value.trim();
               if (!term) return;
-              if (searchGroups.length === 1) {
+              if (term === debouncedSearch && searchGroups.length === 1) {
                 setSearch("");
                 setDebouncedSearch("");
                 window.location.hash = `/group/${searchGroups[0].id}`;
@@ -467,7 +467,7 @@ export default function App() {
         </section>
       )}
 
-      {route.view === "history" ? (
+      {!searching && (route.view === "history" ? (
         <GroupHistory
           groupId={route.id}
           onBack={() => {
@@ -661,7 +661,7 @@ export default function App() {
             )}
           </section>
         </>
-      )}
+      ))}
     </div>
   );
 }
