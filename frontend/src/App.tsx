@@ -22,11 +22,13 @@ import { GroupsTable } from "./components/GroupsTable";
 import { ItemTypeManager } from "./components/ItemTypeManager";
 import { LoginForm } from "./components/LoginForm";
 import { BarcodeView } from "./components/BarcodeView";
+import { SearchResults } from "./components/SearchResults";
 
 type Route =
   | { view: "list" }
   | { view: "overview"; id: number }
-  | { view: "history"; id: number };
+  | { view: "history"; id: number }
+  | { view: "search"; q: string };
 
 /** Read the current view from the URL hash. */
 function parseRoute(hash: string): Route {
@@ -37,6 +39,11 @@ function parseRoute(hash: string): Route {
   const overview = hash.match(/^#\/group\/(\d+)$/);
   if (overview) {
     return { view: "overview", id: Number(overview[1]) };
+  }
+  const search = hash.match(/^#\/search\?(.*)$/);
+  if (search) {
+    const params = new URLSearchParams(search[1]);
+    return { view: "search", q: params.get("q") || "" };
   }
   return { view: "list" };
 }
@@ -56,10 +63,8 @@ export default function App() {
     null,
   );
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [packstreetGroups, setPackstreetGroups] = useState<GroupSummary[]>([]);
-  const [searchGroups, setSearchGroups] = useState<GroupSummary[]>([]);
   const [route, setRoute] = useState<Route>(() =>
     parseRoute(window.location.hash),
   );
@@ -72,8 +77,6 @@ export default function App() {
   const [integrityOpen, setIntegrityOpen] = useState(false);
   const [integrityError, setIntegrityError] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
-
-  const searching = debouncedSearch.trim().length > 0;
 
   // Apply the current user to local auth state.
   const applyUser = useCallback((user: CurrentUser) => {
@@ -132,12 +135,6 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  // Debounce the search box so typing doesn't hit the server on every keypress.
-  useEffect(() => {
-    const handle = window.setTimeout(() => setDebouncedSearch(search), 250);
-    return () => window.clearTimeout(handle);
-  }, [search]);
-
   const loadPackstreets = useCallback(async () => {
     const loaded = await listPackstreets();
     const sorted = [...loaded].sort((a, b) => {
@@ -174,13 +171,14 @@ export default function App() {
     }
   }, [authed, loadItemTypes]);
 
-  const fetchSearchGroups = useCallback(async (term: string) => {
+  const fetchSearchGroups = useCallback(async (term: string): Promise<GroupSummary[]> => {
     setLoading(true);
     setError(null);
     try {
-      setSearchGroups(await listGroups({ q: term }));
+      return await listGroups({ q: term });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Gruppen konnten nicht geladen werden.");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -199,21 +197,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (authed) {
-      const term = debouncedSearch.trim();
-      if (term) {
-        void fetchSearchGroups(term);
-      } else {
-        setSearchGroups([]);
-      }
-    }
-  }, [authed, fetchSearchGroups, debouncedSearch]);
-
-  useEffect(() => {
-    if (authed && selectedPackstreetId !== null && !debouncedSearch.trim()) {
+    if (authed && selectedPackstreetId !== null) {
       void fetchPackstreetGroups(selectedPackstreetId);
     }
-  }, [authed, fetchPackstreetGroups, selectedPackstreetId, debouncedSearch, reloadNonce]);
+  }, [authed, fetchPackstreetGroups, selectedPackstreetId, reloadNonce]);
 
   useEffect(() => {
     if (
@@ -230,19 +217,16 @@ export default function App() {
   // Replace a single group in local state after a rent/return/correct action.
   const handleGroupUpdated = useCallback((updated: GroupSummary) => {
     setPackstreetGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
-    setSearchGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
   }, []);
 
   const handleGroupCreated = useCallback((created: GroupSummary) => {
     setSearch("");
-    setDebouncedSearch("");
     setSelectedPackstreetId(created.packstreet.id);
     setReloadNonce((n) => n + 1);
   }, []);
 
   const handleGroupDeleted = useCallback((deletedId: number) => {
     setPackstreetGroups((prev) => prev.filter((g) => g.id !== deletedId));
-    setSearchGroups((prev) => prev.filter((g) => g.id !== deletedId));
   }, []);
 
   const handleItemTypesChanged = useCallback(() => {
@@ -252,7 +236,6 @@ export default function App() {
 
   const handleGroupsImported = useCallback(() => {
     setSearch("");
-    setDebouncedSearch("");
     setReloadNonce((n) => n + 1);
   }, []);
 
@@ -380,7 +363,7 @@ export default function App() {
         </button>
       </div>
 
-      {!searching && packstreets.length > 0 && (
+      {packstreets.length > 0 && (
         <div className="packstreet-tabs" role="tablist">
           {packstreets.map((p) => (
             <button
@@ -411,63 +394,45 @@ export default function App() {
         </div>
       )}
 
-      <div className="groups__toolbar">
+      <form
+        className="groups__toolbar"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const term = search.trim();
+          if (!term) return;
+          const results = await fetchSearchGroups(term);
+          if (results.length === 1) {
+            setSearch("");
+            window.location.hash = `/group/${results[0].id}`;
+          } else {
+            window.location.hash = `#/search?q=${encodeURIComponent(term)}`;
+          }
+        }}
+      >
         <input
           type="search"
           className="groups__search"
           value={search}
           placeholder="Gruppenname oder -ID suchen…"
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={async (e) => {
-            if (e.key === "Enter") {
-              const term = (e.target as HTMLInputElement).value.trim();
-              if (!term) return;
-              if (term === debouncedSearch && searchGroups.length === 1) {
-                setSearch("");
-                setDebouncedSearch("");
-                window.location.hash = `/group/${searchGroups[0].id}`;
-              } else {
-                const results = await listGroups({ q: term });
-                if (results.length === 1) {
-                  setSearch("");
-                  setDebouncedSearch("");
-                  setSearchGroups(results);
-                  window.location.hash = `/group/${results[0].id}`;
-                } else {
-                  setSearchGroups(results);
-                }
-              }
-            }
+          onChange={(e) => {
+            setSearch(e.target.value);
           }}
           aria-label="Gruppen durchsuchen"
         />
-      </div>
+      </form>
 
-      {searching && route.view !== "list" && (
-        <section className="groups">
-          <div className="groups__bar">
-            <h2>{`Suchergebnisse für „${debouncedSearch.trim()}“`}</h2>
-          </div>
-          {error && <p className="banner banner--error">{error}</p>}
-          {!error && searchGroups.length === 0 && (
-            <p className="empty">Keine Gruppen gefunden.</p>
-          )}
-          {searchGroups.length > 0 && (
-            <GroupsTable
-              groups={searchGroups}
-              itemTypes={itemTypes.filter((it) => it.item_class !== "consumable")}
-              showPackstreet={true}
-              isAdmin={isAdmin}
-              onOpenOverview={(group) => {
-                window.location.hash = `/group/${group.id}`;
-              }}
-              onDeleteGroup={(group) => handleGroupDeleted(group.id)}
-            />
-          )}
-        </section>
-      )}
-
-      {!searching && (route.view === "history" ? (
+      {route.view === "search" ? (
+        <SearchResults
+          q={route.q}
+          itemTypes={itemTypes}
+          isAdmin={isAdmin}
+          onOpenGroup={(group) => {
+            setSearch("");
+            window.location.hash = `/group/${group.id}`;
+          }}
+          onDeleteGroup={(group) => handleGroupDeleted(group.id)}
+        />
+      ) : route.view === "history" ? (
         <GroupHistory
           groupId={route.id}
           onBack={() => {
@@ -605,19 +570,14 @@ export default function App() {
 
             <div className="groups__bar">
               <h2>
-                {searching
-                  ? `Suchergebnisse für „${debouncedSearch.trim()}“`
-                  : (packstreets.find((p) => p.id === selectedPackstreetId)?.name ??
-                    "Gruppen")}
+                {packstreets.find((p) => p.id === selectedPackstreetId)?.name ??
+                  "Gruppen"}
               </h2>
               <button
                 type="button"
                 className="btn btn--ghost"
                 onClick={() => {
-                  if (searching) {
-                    const term = debouncedSearch.trim();
-                    if (term) void fetchSearchGroups(term);
-                  } else if (selectedPackstreetId !== null) {
+                  if (selectedPackstreetId !== null) {
                     void fetchPackstreetGroups(selectedPackstreetId);
                   }
                 }}
@@ -637,21 +597,19 @@ export default function App() {
               </p>
             )}
 
-            {!error && !loading && packstreets.length > 0 && (searching ? searchGroups : packstreetGroups).length === 0 && (
+            {!error && !loading && packstreets.length > 0 && packstreetGroups.length === 0 && (
               <p className="empty">
-                {searching
-                  ? "Keine Gruppen gefunden."
-                  : isAdmin
-                    ? "Noch keine Gruppen in dieser Packstraße. Erstelle eine oben."
-                    : "Noch keine Gruppen in dieser Packstraße."}
+                {isAdmin
+                  ? "Noch keine Gruppen in dieser Packstraße. Erstelle eine oben."
+                  : "Noch keine Gruppen in dieser Packstraße."}
               </p>
             )}
 
-            {(searching ? searchGroups : packstreetGroups).length > 0 && (
+            {packstreetGroups.length > 0 && (
               <GroupsTable
-                groups={searching ? searchGroups : packstreetGroups}
+                groups={packstreetGroups}
                 itemTypes={itemTypes.filter((it) => it.item_class !== "consumable")}
-                showPackstreet={searching}
+                showPackstreet={false}
                 isAdmin={isAdmin}
                 onOpenOverview={(group) => {
                   window.location.hash = `/group/${group.id}`;
@@ -661,7 +619,7 @@ export default function App() {
             )}
           </section>
         </>
-      ))}
+      )}
     </div>
   );
 }
