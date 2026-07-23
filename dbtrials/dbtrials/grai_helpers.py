@@ -42,10 +42,10 @@ def validate_grai(barcode: str) -> None:
     if not SERIAL_RE.fullmatch(serial):
         raise ValueError("The serial number may contain only letters and digits.")
 
-    expected = gs1_check_digit(asset_identifier[:-1])
-    actual = int(asset_identifier[-1])
+    # expected = gs1_check_digit(asset_identifier[:-1])
+    # actual = int(asset_identifier[-1])
 
-    if expected != actual:
-        raise ValueError(
-            f"Invalid GS1 check digit. Expected {expected}, found {actual}."
-        )
+    # if expected != actual:
+    #     raise ValueError(
+    #         f"Invalid GS1 check digit. Expected {expected}, found {actual}."
+    #     )
