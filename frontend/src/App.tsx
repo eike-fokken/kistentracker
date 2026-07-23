@@ -58,7 +58,8 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const [groups, setGroups] = useState<GroupSummary[]>([]);
+  const [packstreetGroups, setPackstreetGroups] = useState<GroupSummary[]>([]);
+  const [searchGroups, setSearchGroups] = useState<GroupSummary[]>([]);
   const [route, setRoute] = useState<Route>(() =>
     parseRoute(window.location.hash),
   );
@@ -173,43 +174,63 @@ export default function App() {
     }
   }, [authed, loadItemTypes]);
 
-  const refresh = useCallback(async () => {
+  const fetchSearchGroups = useCallback(async (term: string) => {
     setLoading(true);
     setError(null);
     try {
-      const term = debouncedSearch.trim();
-      const loaded = term
-        ? await listGroups({ q: term })
-        : await listGroups({ packstreetId: selectedPackstreetId });
-      setGroups(loaded);
+      setSearchGroups(await listGroups({ q: term }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Gruppen konnten nicht geladen werden.");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedPackstreetId]);
+  }, []);
+
+  const fetchPackstreetGroups = useCallback(async (packstreetId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      setPackstreetGroups(await listGroups({ packstreetId }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Gruppen konnten nicht geladen werden.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (authed && selectedPackstreetId !== null) {
-      void refresh();
+    if (authed) {
+      const term = debouncedSearch.trim();
+      if (term) {
+        void fetchSearchGroups(term);
+      } else {
+        setSearchGroups([]);
+      }
     }
-  }, [authed, refresh, reloadNonce]);
+  }, [authed, fetchSearchGroups, debouncedSearch]);
+
+  useEffect(() => {
+    if (authed && selectedPackstreetId !== null && !debouncedSearch.trim()) {
+      void fetchPackstreetGroups(selectedPackstreetId);
+    }
+  }, [authed, fetchPackstreetGroups, selectedPackstreetId, debouncedSearch, reloadNonce]);
 
   useEffect(() => {
     if (
       navigateToStock &&
-      groups.length === 1 &&
-      groups[0].packstreet.id === selectedPackstreetId &&
+      packstreetGroups.length === 1 &&
+      packstreetGroups[0].packstreet.id === selectedPackstreetId &&
       packstreets.some((p) => p.id === selectedPackstreetId && p.is_stock)
     ) {
-      window.location.hash = `#/group/${groups[0].id}`;
+      window.location.hash = `#/group/${packstreetGroups[0].id}`;
       setNavigateToStock(false);
     }
-  }, [groups, navigateToStock, selectedPackstreetId, packstreets]);
+  }, [packstreetGroups, navigateToStock, selectedPackstreetId, packstreets]);
 
   // Replace a single group in local state after a rent/return/correct action.
   const handleGroupUpdated = useCallback((updated: GroupSummary) => {
-    setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+    setPackstreetGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+    setSearchGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
   }, []);
 
   const handleGroupCreated = useCallback((created: GroupSummary) => {
@@ -220,7 +241,8 @@ export default function App() {
   }, []);
 
   const handleGroupDeleted = useCallback((deletedId: number) => {
-    setGroups((prev) => prev.filter((g) => g.id !== deletedId));
+    setPackstreetGroups((prev) => prev.filter((g) => g.id !== deletedId));
+    setSearchGroups((prev) => prev.filter((g) => g.id !== deletedId));
   }, []);
 
   const handleItemTypesChanged = useCallback(() => {
@@ -396,11 +418,25 @@ export default function App() {
           value={search}
           placeholder="Gruppenname oder -ID suchen…"
           onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && groups.length === 1) {
-              setSearch("");
-              setDebouncedSearch("");
-              window.location.hash = `/group/${groups[0].id}`;
+          onKeyDown={async (e) => {
+            if (e.key === "Enter") {
+              const term = search.trim();
+              if (!term) return;
+              if (searchGroups.length === 1) {
+                setSearch("");
+                setDebouncedSearch("");
+                window.location.hash = `/group/${searchGroups[0].id}`;
+              } else {
+                const results = await listGroups({ q: term });
+                if (results.length === 1) {
+                  setSearch("");
+                  setDebouncedSearch("");
+                  setSearchGroups(results);
+                  window.location.hash = `/group/${results[0].id}`;
+                } else {
+                  setSearchGroups(results);
+                }
+              }
             }
           }}
           aria-label="Gruppen durchsuchen"
@@ -413,12 +449,12 @@ export default function App() {
             <h2>{`Suchergebnisse für „${debouncedSearch.trim()}“`}</h2>
           </div>
           {error && <p className="banner banner--error">{error}</p>}
-          {!error && groups.length === 0 && (
+          {!error && searchGroups.length === 0 && (
             <p className="empty">Keine Gruppen gefunden.</p>
           )}
-          {groups.length > 0 && (
+          {searchGroups.length > 0 && (
             <GroupsTable
-              groups={groups}
+              groups={searchGroups}
               itemTypes={itemTypes.filter((it) => it.item_class !== "consumable")}
               showPackstreet={true}
               isAdmin={isAdmin}
@@ -577,7 +613,14 @@ export default function App() {
               <button
                 type="button"
                 className="btn btn--ghost"
-                onClick={() => void refresh()}
+                onClick={() => {
+                  if (searching) {
+                    const term = debouncedSearch.trim();
+                    if (term) void fetchSearchGroups(term);
+                  } else if (selectedPackstreetId !== null) {
+                    void fetchPackstreetGroups(selectedPackstreetId);
+                  }
+                }}
                 disabled={loading}
               >
                 {loading ? "Aktualisiere…" : "Aktualisieren"}
@@ -594,7 +637,7 @@ export default function App() {
               </p>
             )}
 
-            {!error && !loading && packstreets.length > 0 && groups.length === 0 && (
+            {!error && !loading && packstreets.length > 0 && (searching ? searchGroups : packstreetGroups).length === 0 && (
               <p className="empty">
                 {searching
                   ? "Keine Gruppen gefunden."
@@ -604,9 +647,9 @@ export default function App() {
               </p>
             )}
 
-            {groups.length > 0 && (
+            {(searching ? searchGroups : packstreetGroups).length > 0 && (
               <GroupsTable
-                groups={groups}
+                groups={searching ? searchGroups : packstreetGroups}
                 itemTypes={itemTypes.filter((it) => it.item_class !== "consumable")}
                 showPackstreet={searching}
                 isAdmin={isAdmin}
