@@ -420,7 +420,7 @@ export default function App() {
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={async (e) => {
             if (e.key === "Enter") {
-              const term = search.trim();
+              const term = (e.target as HTMLInputElement).value.trim();
               if (!term) return;
               if (searchGroups.length === 1) {
                 setSearch("");
