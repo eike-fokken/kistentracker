@@ -13,7 +13,7 @@
   --action-rent-light: #dbeafe;
   --action-rent-border: #93c5fd;
   --action-rent-verb: #16a34a;
-  --action-rent-banner: #166534;
+  --action-rent-banner: #1d4ed8;
   --action-return: #ea580c;
   --action-return-light: #fff7ed;
   --action-return-border: #fdba74;
@@ -1109,6 +1109,26 @@ select:focus {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
+}
+
+.user-toggle--rent {
+  background: var(--action-rent);
+  border-color: var(--action-rent);
+  color: #fff;
+}
+
+.user-toggle--rent:hover {
+  opacity: 0.85;
+}
+
+.user-toggle--return {
+  background: var(--action-return);
+  border-color: var(--action-return);
+  color: #fff;
+}
+
+.user-toggle--return:hover {
+  opacity: 0.85;
 }
 
 /* --- Barcode view --- */

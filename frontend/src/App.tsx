@@ -339,7 +339,7 @@ export default function App() {
         </button>
         <button
           type="button"
-          className={`user-toggle${preferRent ? " is-active" : ""}`}
+          className={`user-toggle${preferRent ? " user-toggle--rent" : " user-toggle--return"}`}
           onClick={() => {
             const next = !preferRent;
             setPreferRent(next);
@@ -347,8 +347,8 @@ export default function App() {
           }}
         >
           {preferRent
-            ? "Ausgeben bevorzugt"
-            : "Zurücknehmen bevorzugt"}
+            ? "Ausgabe-Modus"
+            : "Rücknahme-Modus"}
         </button>
         <button
           type="button"
@@ -359,7 +359,7 @@ export default function App() {
             void updateCurrentUser(undefined, undefined, undefined, next);
           }}
         >
-          Barcode
+{barcodeView ? "Barcode-Modus" : "Zahlen-Modus"}
         </button>
       </div>
 
