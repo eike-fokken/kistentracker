@@ -9,6 +9,7 @@ import { describeAction, formatTimestamp } from "./utils";
 
 interface Props {
   groupId: number;
+  username: string | null;
   preferRent: boolean;
   data: GroupOverviewData | null;
   loading: boolean;
@@ -19,7 +20,7 @@ interface Props {
   onToggleMode: () => void;
 }
 
-export function BarcodeView({ groupId, preferRent, data, loading, error, onReload, onBack, onViewHistory, onToggleMode }: Props) {
+export function BarcodeView({ groupId, username, preferRent, data, loading, error, onReload, onBack, onViewHistory, onToggleMode }: Props) {
   const [barcode, setBarcode] = useState("");
   const [busy, setBusy] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -241,6 +242,7 @@ export function BarcodeView({ groupId, preferRent, data, loading, error, onReloa
         <CorrectionModal
           groupId={groupId}
           isAdmin={false}
+          username={username}
           internalId={data.internal_id}
           labels={labels}
           onClose={() => setShowCorrection(false)}

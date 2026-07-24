@@ -1227,6 +1227,11 @@ select:focus {
   font-family: monospace;
 }
 
+.action-log__muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .overview-cell-spacer {
   height: 2.9rem;
 }

@@ -7,6 +7,7 @@ import { describeAction, formatTimestamp } from "./utils";
 interface Props {
   groupId: number;
   isAdmin: boolean;
+  username: string | null;
   /** The group's internal_id (e.g. "CG-001"), used in the modal title. */
   internalId: string;
   labels: Record<string, string>;
@@ -15,9 +16,17 @@ interface Props {
   onGroupChanged: (group: GroupSummary) => void;
 }
 
+function canModify(entry: RecentAction, isAdmin: boolean, currentUsername: string | null): boolean {
+  if (isAdmin) return true;
+  if (entry.username !== currentUsername) return false;
+  const age = Date.now() - new Date(entry.timestamp).getTime();
+  return age < 10 * 60 * 1000;
+}
+
 export function CorrectionModal({
   groupId,
   isAdmin,
+  username,
   internalId,
   labels,
   onClose,
@@ -49,13 +58,9 @@ export function CorrectionModal({
     setDeleteError(null);
     setCorrectionLoading(true);
     try {
-      if (isAdmin) {
-        const actions = await listRecentActions(groupId);
-        setAllActions(actions);
-        setCorrectionActions(filterActionsForDay(actions, correctionDay));
-      } else {
-        setCorrectionActions(await listRecentActions(groupId));
-      }
+      const actions = await listRecentActions(groupId);
+      setAllActions(actions);
+      setCorrectionActions(filterActionsForDay(actions, correctionDay));
     } catch (err) {
       setCorrectionError(
         err instanceof ApiError ? err.message : "Aktionen konnten nicht geladen werden.",
@@ -149,56 +154,54 @@ export function CorrectionModal({
           </button>
         </div>
 
-        {isAdmin && (
-          <div className="modal__timeframe">
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => changeCorrectionDay(-1)}
-            >
-              ◀
-            </button>
-            <span className="modal__day-label">
-              {correctionDay.toLocaleDateString(undefined, {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </span>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => changeCorrectionDay(1)}
-              disabled={
-                new Date().toDateString() === correctionDay.toDateString()
-              }
-            >
-              ▶
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                setCorrectionDay(today);
-                setCorrectionActions(
-                  allActions ? filterActionsForDay(allActions, today) : null,
-                );
-              }}
-            >
-              Heute
-            </button>
-          </div>
-        )}
+        <div className="modal__timeframe">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => changeCorrectionDay(-1)}
+          >
+            ◀
+          </button>
+          <span className="modal__day-label">
+            {correctionDay.toLocaleDateString(undefined, {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => changeCorrectionDay(1)}
+            disabled={
+              new Date().toDateString() === correctionDay.toDateString()
+            }
+          >
+            ▶
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              setCorrectionDay(today);
+              setCorrectionActions(
+                allActions ? filterActionsForDay(allActions, today) : null,
+              );
+            }}
+          >
+            Heute
+          </button>
+        </div>
 
         {correctionLoading && <p className="empty">Ladevorgang…</p>}
         {correctionError && <p className="banner banner--error">{correctionError}</p>}
         {deleteError && <p className="banner banner--error">{deleteError}</p>}
 
         {correctionActions && correctionActions.length === 0 && (
-          <p className="empty">{isAdmin ? "Keine Aktionen an diesem Tag." : "Keine eigenen Aktionen in den letzten 10 Minuten."}</p>
+          <p className="empty">Keine Aktionen an diesem Tag.</p>
         )}
 
         {correctionActions && correctionActions.length > 0 && (
@@ -269,7 +272,7 @@ export function CorrectionModal({
                         Abbrechen
                       </button>
                     </>
-                  ) : (
+                  ) : canModify(entry, isAdmin, username) ? (
                     <>
                       {!entry.barcode && (
                         <button
@@ -290,6 +293,8 @@ export function CorrectionModal({
                         {deletingId === entry.id ? "Löschen…" : "Löschen"}
                       </button>
                     </>
+                  ) : (
+                    <span className="action-log__muted">Keine Berechtigung</span>
                   )}
                 </div>
               </li>

@@ -17,6 +17,7 @@ import { describeAction, formatTimestamp } from "./utils";
 interface Props {
   groupId: number;
   isAdmin: boolean;
+  username: string | null;
   packstreets: Packstreet[];
   showConsumables: boolean;
   preferRent: boolean;
@@ -34,6 +35,7 @@ interface Props {
 export function GroupOverview({
   groupId,
   isAdmin,
+  username,
   packstreets,
   showConsumables,
   preferRent,
@@ -349,6 +351,7 @@ export function GroupOverview({
         <CorrectionModal
           groupId={groupId}
           isAdmin={isAdmin}
+          username={username}
           internalId={data.internal_id}
           labels={labels}
           onClose={() => setShowCorrection(false)}

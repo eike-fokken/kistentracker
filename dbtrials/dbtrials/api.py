@@ -1047,27 +1047,14 @@ def recent_actions(
     request: HttpRequest,
     group_id: int,
 ) -> list[dict[str, Any]]:
-    """List recent rental actions for the correction/deletion dialog.
+    """List all rental actions for the correction/deletion dialog.
 
-    Regular users: always restricted to their own actions from the last
-    10 minutes.
-
-    Admins: see all actions from all users for all time. Day filtering
-    is handled client-side.
+    Returns every action so the frontend can paginate by day client-side.
+    Deletion is still restricted (own actions, <10 min for non-admins)
+    by the DELETE endpoint.
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
-    user = getattr(request, "auth")
-    is_admin = getattr(user, "is_admin", False)
-
-    qs = group.actions.select_related("user")
-
-    if is_admin:
-        pass
-    else:
-        cutoff = timezone.now() - timedelta(minutes=10)
-        qs = qs.filter(timestamp__gte=cutoff, timestamp__lte=timezone.now())
-        qs = qs.filter(user=user)
-        qs = qs[:100]
+    qs = group.actions.select_related("user").order_by("-timestamp")
 
     return [
         {

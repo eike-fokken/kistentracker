@@ -470,6 +470,7 @@ export default function App() {
           <GroupOverview
             groupId={route.id}
             isAdmin={isAdmin}
+            username={username}
             packstreets={packstreets}
             showConsumables={showConsumables}
             preferRent={preferRent}
@@ -497,6 +498,7 @@ export default function App() {
         ) : (
           <BarcodeView
             groupId={route.id}
+            username={username}
             preferRent={preferRent}
             data={overviewData}
             loading={overviewLoading}
