@@ -9,6 +9,17 @@
   --danger: #b91c1c;
   --danger-bg: #fee2e2;
   --radius: 10px;
+  --action-rent: #2563eb;
+  --action-rent-light: #dbeafe;
+  --action-rent-border: #93c5fd;
+  --action-rent-verb: #16a34a;
+  --action-rent-banner: #166534;
+  --action-return: #ea580c;
+  --action-return-light: #fff7ed;
+  --action-return-border: #fdba74;
+  --action-return-strong: #c2410c;
+  --action-return-verb: #ea580c;
+  --action-return-banner: #c2410c;
 }
 
 * {
@@ -308,18 +319,18 @@ body {
 }
 
 .row-actions__group--rent {
-  border-color: #93c5fd;
-  background: #dbeafe;
+  border-color: var(--action-rent-border);
+  background: var(--action-rent-light);
 }
 
 .row-actions__group--return {
-  border-color: #94a3b8;
-  background: #e2e8f0;
+  border-color: var(--action-return-border);
+  background: var(--action-return-light);
 }
 
 .row-actions__group--correct {
-  border-color: #93c5fd;
-  background: #dbeafe;
+  border-color: var(--action-rent-border);
+  background: var(--action-rent-light);
 }
 
 .row-actions input[type="number"] {
@@ -446,13 +457,13 @@ select:focus {
 }
 
 .btn--secondary {
-  background: #475569;
-  border-color: #475569;
+  background: var(--action-return);
+  border-color: var(--action-return);
   color: #fff;
 }
 
 .btn--secondary:not(:disabled):hover {
-  background: #334155;
+  background: var(--action-return-strong);
 }
 
 .banner {
@@ -539,11 +550,11 @@ select:focus {
 }
 
 .action-log__item--rent {
-  border-left-color: var(--primary);
+  border-left-color: var(--action-rent);
 }
 
 .action-log__item--return {
-  border-left-color: var(--muted);
+  border-left-color: var(--action-return);
 }
 
 .action-log__item--correct {
@@ -566,12 +577,12 @@ select:focus {
 }
 
 .action-log__verb--rent {
-  color: #16a34a;
+  color: var(--action-rent-verb);
   font-weight: 600;
 }
 
 .action-log__verb--return {
-  color: #7c3aed;
+  color: var(--action-return-verb);
   font-weight: 600;
 }
 
@@ -1110,12 +1121,12 @@ select:focus {
 }
 
 .barcode-mode-banner--rent {
-  background: #166534;
+  background: var(--action-rent-banner);
   color: #fff;
 }
 
 .barcode-mode-banner--return {
-  background: #1e40af;
+  background: var(--action-return-banner);
   color: #fff;
 }
 
