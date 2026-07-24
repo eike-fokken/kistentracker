@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ApiError, getGroupOverview, scanCrate } from "../api";
+import { ApiError, scanCrate } from "../api";
 import type {
   GroupOverview as GroupOverviewData,
 } from "../types";
@@ -10,16 +10,16 @@ import { describeAction, formatTimestamp } from "./utils";
 interface Props {
   groupId: number;
   preferRent: boolean;
+  data: GroupOverviewData | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
   onBack: () => void;
   onViewHistory: () => void;
   onToggleMode: () => void;
 }
 
-export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onToggleMode }: Props) {
-  const [data, setData] = useState<GroupOverviewData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+export function BarcodeView({ groupId, preferRent, data, loading, error, onReload, onBack, onViewHistory, onToggleMode }: Props) {
   const [barcode, setBarcode] = useState("");
   const [busy, setBusy] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -29,27 +29,6 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
   const [showCorrection, setShowCorrection] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const overview = await getGroupOverview(groupId);
-      setData(overview);
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Übersicht konnte nicht geladen werden.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [groupId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   useEffect(() => {
     setBarcode("");
@@ -69,9 +48,9 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
   }, [scanSuccess]);
 
   const handleUpdated = useCallback(() => {
-      void load();
+      onReload();
     },
-    [load],
+    [onReload],
   );
 
   async function handleScan() {
@@ -96,7 +75,7 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
           `Kiste ${result.barcode} ${preferRent ? "ausgegeben" : "zurückgenommen"}. Bestand: ${result.quantity}`,
         );
       }
-      void load();
+      void onReload();
     } catch (err) {
       setScanError(
         err instanceof ApiError ? err.message : "Scan fehlgeschlagen.",
@@ -204,6 +183,7 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
               <tr>
                 <th>Artikel</th>
                 <th className="num">Ausgeliehen</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -214,6 +194,7 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
                     <td className={`num ${item.quantity < 0 ? "num--negative" : ""}`}>
                       {item.quantity}
                     </td>
+                    <td><div className="overview-cell-spacer" /></td>
                   </tr>
                 ))}
             </tbody>

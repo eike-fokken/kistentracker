@@ -78,9 +78,8 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
         <td className={`num ${item.quantity < 0 ? "num--negative" : ""}`}>
           {item.quantity}
         </td>
-        {!readonly && (
         <td>
-          {hasAction && (
+          {!readonly && hasAction && (
           <div className={`row-actions__group row-actions__group--${preferRent ? "rent" : "return"}`}>
             <input
               ref={inputRef}
@@ -106,15 +105,15 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
             </button>
           </div>
           )}
-          {exceeds && !error && (
+          {(readonly || !hasAction) && <div className="overview-cell-spacer" />}
+          {!readonly && exceeds && !error && (
             <p className="banner banner--warning">
               Achtung: die Gruppe hat nur {item.quantity} Stück ausgeliehen. Die
               Rückgabe führt zu einem negativen Bestand.
             </p>
           )}
-          {error && <p className="banner banner--error">{error}</p>}
+          {!readonly && error && <p className="banner banner--error">{error}</p>}
         </td>
-        )}
       </tr>
     );
   },

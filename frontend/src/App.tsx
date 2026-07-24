@@ -5,6 +5,7 @@ import {
   checkIntegrity,
   downloadStockCsv,
   getCurrentUser,
+  getGroupOverview,
   listPackstreets,
   listGroups,
   listItemTypes,
@@ -12,7 +13,7 @@ import {
   updateCurrentUser,
 } from "./api";
 import { LOGOUT_EVENT } from "./auth";
-import type { CurrentUser, GroupSummary, IntegrityCheckResult, ItemTypeDef, Packstreet } from "./types";
+import type { CurrentUser, GroupOverview as GroupOverviewData, GroupSummary, IntegrityCheckResult, ItemTypeDef, Packstreet } from "./types";
 import { PackstreetManager } from "./components/PackstreetManager";
 import { CreateGroupForm } from "./components/CreateGroupForm";
 import { DataImport } from "./components/DataImport";
@@ -77,6 +78,9 @@ export default function App() {
   const [integrityOpen, setIntegrityOpen] = useState(false);
   const [integrityError, setIntegrityError] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [overviewData, setOverviewData] = useState<GroupOverviewData | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
 
   // Apply the current user to local auth state.
   const applyUser = useCallback((user: CurrentUser) => {
@@ -201,6 +205,26 @@ export default function App() {
       void fetchPackstreetGroups(selectedPackstreetId);
     }
   }, [authed, fetchPackstreetGroups, selectedPackstreetId, reloadNonce]);
+
+  const loadOverview = useCallback(async (groupId: number) => {
+    setOverviewLoading(true);
+    setOverviewError(null);
+    try {
+      setOverviewData(await getGroupOverview(groupId));
+    } catch (err) {
+      setOverviewError(err instanceof ApiError ? err.message : "Übersicht konnte nicht geladen werden.");
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (route.view === "overview") {
+      void loadOverview(route.id);
+    } else {
+      setOverviewData(null);
+    }
+  }, [route.view, route.view === "overview" ? (route as { view: "overview"; id: number }).id : null, loadOverview]);
 
   useEffect(() => {
     if (
@@ -447,6 +471,10 @@ export default function App() {
             packstreets={packstreets}
             showConsumables={showConsumables}
             preferRent={preferRent}
+            data={overviewData}
+            loading={overviewLoading}
+            error={overviewError}
+            onReload={() => { void loadOverview(route.id); } }
             onBack={() => {
               window.location.hash = "";
             }}
@@ -468,6 +496,10 @@ export default function App() {
           <BarcodeView
             groupId={route.id}
             preferRent={preferRent}
+            data={overviewData}
+            loading={overviewLoading}
+            error={overviewError}
+            onReload={() => { void loadOverview(route.id); } }
             onBack={() => {
               window.location.hash = "";
             }}

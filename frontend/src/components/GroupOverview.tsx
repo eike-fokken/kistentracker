@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   ApiError,
   deleteGroup,
-  getGroupOverview,
   updateGroup,
 } from "../api";
 import type {
@@ -12,7 +11,6 @@ import type {
   GroupSummary,
 } from "../types";
 import { OverviewItemRow } from "./OverviewItemRow";
-import type { OverviewItemRowHandle } from "./OverviewItemRow";
 import { CorrectionModal } from "./CorrectionModal";
 import { describeAction, formatTimestamp } from "./utils";
 
@@ -22,6 +20,10 @@ interface Props {
   packstreets: Packstreet[];
   showConsumables: boolean;
   preferRent: boolean;
+  data: GroupOverviewData | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
   onBack: () => void;
   onViewHistory: () => void;
   onToggleMode: () => void;
@@ -35,16 +37,16 @@ export function GroupOverview({
   packstreets,
   showConsumables,
   preferRent,
+  data,
+  loading,
+  error,
+  onReload,
   onBack,
   onViewHistory,
   onToggleMode,
   onGroupChanged,
   onDeleted,
 }: Props) {
-  const [data, setData] = useState<GroupOverviewData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editNumber, setEditNumber] = useState("");
@@ -55,50 +57,12 @@ export function GroupOverview({
 
   const [groupDeleteError, setGroupDeleteError] = useState<string | null>(null);
 
-  const firstRowRef = useRef<OverviewItemRowHandle | null>(null);
-  const focusedRef = useRef(false);
-
-  useEffect(() => {
-    if (data && !focusedRef.current) {
-      focusedRef.current = true;
-      if (preferRent) {
-        firstRowRef.current?.focusRent();
-      } else {
-        firstRowRef.current?.focusReturn();
-      }
-    }
-  }, [data, preferRent]);
-
-  useEffect(() => {
-    if (!data) {
-      focusedRef.current = false;
-    }
-  }, [data]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setData(await getGroupOverview(groupId));
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Übersicht konnte nicht geladen werden.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [groupId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   const handleUpdated = useCallback(
     (group: GroupSummary) => {
       onGroupChanged(group);
-      void load();
+      onReload();
     },
-    [onGroupChanged, load],
+    [onGroupChanged, onReload],
   );
 
   async function handleDeleteGroup() {
@@ -153,7 +117,7 @@ export function GroupOverview({
       });
       onGroupChanged(updated);
       setEditing(false);
-      await load();
+      onReload();
     } catch (err) {
       setEditError(
         err instanceof ApiError ? err.message : "Gruppe konnte nicht aktualisiert werden.",
@@ -319,16 +283,15 @@ export function GroupOverview({
               <tr>
                 <th>Artikel</th>
                 <th className="num">Ausgeliehen</th>
-                {!data.packstreet.is_stock && <th>{preferRent ? "Ausgeben" : "Zurücknehmen"}</th>}
+                <th>{!data.packstreet.is_stock ? (preferRent ? "Ausgeben" : "Zurücknehmen") : ""}</th>
               </tr>
             </thead>
             <tbody>
               {data.items
                 .filter((it) => showConsumables || it.item_class !== "consumable")
-                .map((item, index) => (
+                .map((item) => (
                   <OverviewItemRow
                     key={item.item_type}
-                    ref={index === 0 ? firstRowRef : undefined}
                     groupId={groupId}
                     item={item}
                     preferRent={preferRent}
