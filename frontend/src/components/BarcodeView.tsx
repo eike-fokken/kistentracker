@@ -208,6 +208,28 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
             <p className="banner banner--error">{scanError}</p>
           )}
 
+          <div className="table-scroll">
+          <table className="groups-table overview-table">
+            <thead>
+              <tr>
+                <th>Artikel</th>
+                <th className="num">Ausgeliehen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items
+                .map((item) => (
+                  <tr key={item.item_type}>
+                    <td>{item.label}</td>
+                    <td className={`num ${item.quantity < 0 ? "num--negative" : ""}`}>
+                      {item.quantity}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+          </div>
+
           <section className="action-log">
             <h3>Letzte Aktivitäten</h3>
             {data.recent_actions.length === 0 ? (
