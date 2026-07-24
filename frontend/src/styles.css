@@ -12,7 +12,7 @@
   --action-rent: #2563eb;
   --action-rent-light: #dbeafe;
   --action-rent-border: #93c5fd;
-  --action-rent-verb: #16a34a;
+  --action-rent-verb: var(--action-rent);
   --action-rent-banner: #1d4ed8;
   --action-return: #ea580c;
   --action-return-light: #fff7ed;
