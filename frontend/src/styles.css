@@ -456,13 +456,23 @@ select:focus {
   background: var(--bg);
 }
 
-.btn--secondary {
+.btn--rent {
+  background: var(--action-rent);
+  border-color: var(--action-rent);
+  color: #fff;
+}
+
+.btn--rent:not(:disabled):hover {
+  background: var(--action-rent-banner);
+}
+
+.btn--return {
   background: var(--action-return);
   border-color: var(--action-return);
   color: #fff;
 }
 
-.btn--secondary:not(:disabled):hover {
+.btn--return:not(:disabled):hover {
   background: var(--action-return-strong);
 }
 

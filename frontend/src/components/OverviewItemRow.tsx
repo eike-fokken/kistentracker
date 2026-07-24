@@ -120,7 +120,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
               />
               <button
                 type="button"
-                className="btn btn--primary"
+                className="btn btn--rent"
                 onClick={() => void rent(rentAmount)}
                 disabled={busy}
               >
@@ -145,7 +145,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
                 />
                 <button
                   type="button"
-                  className="btn btn--secondary"
+                  className="btn btn--return"
                   onClick={() => void returnItem(returnAmount)}
                   disabled={busy}
                 >
