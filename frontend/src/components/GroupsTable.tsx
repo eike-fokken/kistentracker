@@ -69,7 +69,18 @@ export function GroupsTable({
         <tbody>
           {groups.map((group) => (
             <tr key={group.id}>
-              <td className="num">{group.internal_id}</td>
+              <td className="num">
+                <button
+                  type="button"
+                  className="link"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenOverview(group);
+                  }}
+                >
+                  {group.internal_id}
+                </button>
+              </td>
               <td>
                 <button
                   type="button"
