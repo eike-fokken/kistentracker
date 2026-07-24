@@ -12,9 +12,10 @@ interface Props {
   preferRent: boolean;
   onBack: () => void;
   onViewHistory: () => void;
+  onToggleMode: () => void;
 }
 
-export function BarcodeView({ groupId, preferRent, onBack, onViewHistory }: Props) {
+export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onToggleMode }: Props) {
   const [data, setData] = useState<GroupOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +157,10 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory }: Prop
 
           <div
             className={`barcode-mode-banner barcode-mode-banner--${preferRent ? "rent" : "return"}`}
+            onClick={onToggleMode}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleMode(); } }}
           >
             <div className="barcode-mode-banner__label">
               {preferRent ? "AUSLEIHE-MODUS" : "RÜCKGABE-MODUS"}
