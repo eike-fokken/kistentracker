@@ -1146,15 +1146,18 @@ select:focus {
     padding: 0.4rem 0.6rem;
   }
 
-  .barcode-view .overview-table {
+  .barcode-view .overview-table,
+  .overview .overview-table {
     min-width: 0;
   }
 
-  .barcode-view .overview-table thead {
+  .barcode-view .overview-table thead,
+  .overview .overview-table thead {
     display: none;
   }
 
-  .barcode-view .overview-table tbody tr {
+  .barcode-view .overview-table tbody tr,
+  .overview .overview-table tbody tr {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1163,16 +1166,20 @@ select:focus {
     cursor: default;
   }
 
-  .barcode-view .overview-table tbody tr:last-child {
+  .barcode-view .overview-table tbody tr:last-child,
+  .overview .overview-table tbody tr:last-child {
     border-bottom: none;
   }
 
-  .barcode-view .overview-table tbody tr:hover {
+  .barcode-view .overview-table tbody tr:hover,
+  .overview .overview-table tbody tr:hover {
     background: var(--card);
   }
 
   .barcode-view .overview-table td,
-  .barcode-view .overview-table th {
+  .barcode-view .overview-table th,
+  .overview .overview-table td,
+  .overview .overview-table th {
     display: block;
     width: auto;
     height: auto;
@@ -1182,13 +1189,15 @@ select:focus {
     font-weight: 500;
   }
 
-  .barcode-view .overview-table td:first-child {
+  .barcode-view .overview-table td:first-child,
+  .overview .overview-table td:first-child {
     font-size: 1.1rem;
     font-weight: 700;
     margin-bottom: 0.15rem;
   }
 
-  .barcode-view .overview-table td.num {
+  .barcode-view .overview-table td.num,
+  .overview .overview-table td.num {
     font-size: 1.4rem;
     font-weight: 700;
     text-align: left;
@@ -1196,6 +1205,15 @@ select:focus {
 
   .barcode-view .overview-table td:last-child {
     display: none;
+  }
+
+  .overview .overview-table td:last-child {
+    display: block;
+    width: 100%;
+  }
+
+  .overview .row-actions__group {
+    justify-content: flex-start;
   }
 }
 
