@@ -1030,6 +1030,20 @@ select:focus {
     flex-direction: column;
     gap: 0.4rem;
   }
+
+  .barcode-mode-banner__label {
+    font-size: 1.25rem;
+    letter-spacing: 0.03em;
+  }
+
+  .barcode-mode-banner__desc {
+    font-size: 1rem;
+  }
+
+  .barcode-input {
+    font-size: 1.1rem;
+    padding: 0.85rem;
+  }
 }
 
 @media (max-width: 32rem) {
@@ -1107,6 +1121,29 @@ select:focus {
 
   .card {
     padding: 0.75rem;
+  }
+
+  .barcode-mode-banner {
+    padding: 1rem;
+  }
+
+  .barcode-mode-banner__label {
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+  }
+
+  .barcode-mode-banner__desc {
+    font-size: 0.95rem;
+  }
+
+  .barcode-input {
+    font-size: 1rem;
+    padding: 0.75rem;
+  }
+
+  .banner {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
   }
 }
 
