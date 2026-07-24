@@ -743,7 +743,17 @@ select:focus {
 
 .overview-table th:first-child,
 .overview-table td:first-child {
+  width: 30%;
+}
+
+.overview-table th:nth-child(2),
+.overview-table td:nth-child(2) {
   width: 20%;
+}
+
+.overview-table th:last-child,
+.overview-table td:last-child {
+  width: 50%;
 }
 
 .overview-table th,
@@ -939,7 +949,17 @@ select:focus {
 
   .overview-table th:first-child,
   .overview-table td:first-child {
-    width: auto;
+    width: 30%;
+  }
+
+  .overview-table th:nth-child(2),
+  .overview-table td:nth-child(2) {
+    width: 20%;
+  }
+
+  .overview-table th:last-child,
+  .overview-table td:last-child {
+    width: 50%;
   }
 
   .groups-table {
