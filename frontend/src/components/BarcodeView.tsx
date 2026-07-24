@@ -155,6 +155,7 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
             </div>
           )}
 
+          {!data.packstreet.is_stock && (
           <div
             className={`barcode-mode-banner barcode-mode-banner--${preferRent ? "rent" : "return"}`}
             onClick={onToggleMode}
@@ -171,13 +172,15 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
                 : "Gescannte Kisten werden zurückgenommen"}
             </div>
           </div>
+          )}
 
-          {crateQuantity !== null && (
+          {!data.packstreet.is_stock && crateQuantity !== null && (
             <div className="barcode-crate-count">
               Kisten derzeit: <strong>{crateQuantity}</strong>
             </div>
           )}
 
+          {!data.packstreet.is_stock && (
           <div className="barcode-input-area">
             <input
               ref={inputRef}
@@ -193,6 +196,7 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
               autoFocus
             />
           </div>
+          )}
 
           {scanSuccess && (
             <p className="banner banner--success">{scanSuccess}</p>
