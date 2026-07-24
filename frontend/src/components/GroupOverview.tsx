@@ -328,6 +328,11 @@ export function GroupOverview({
                     <span className="action-log__desc">
                       <strong>{entry.username ?? "(unbekannter Benutzer)"}</strong>{" "}
                       {describeAction(entry, labels)}
+                      {entry.barcode && (
+                        <span className="action-log__barcode">
+                          {entry.barcode}
+                        </span>
+                      )}
                     </span>
                     <time className="action-log__time" dateTime={entry.timestamp}>
                       {formatTimestamp(entry.timestamp)}
