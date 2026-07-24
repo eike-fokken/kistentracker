@@ -70,7 +70,9 @@ export function BarcodeView({ groupId, username, preferRent, data, loading, erro
         action: preferRent ? "rent" : "return",
       });
       if (result.warning) {
-        setScanWarning(result.warning);
+        setScanWarning(
+          `${result.warning} Bestand: ${result.quantity}`,
+        );
       } else {
         setScanSuccess(
           `Kiste ${result.barcode} ${preferRent ? "ausgegeben" : "zurückgenommen"}. Bestand: ${result.quantity}`,
