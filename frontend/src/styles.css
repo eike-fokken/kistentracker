@@ -1145,6 +1145,58 @@ select:focus {
     font-size: 0.85rem;
     padding: 0.4rem 0.6rem;
   }
+
+  .barcode-view .overview-table {
+    min-width: 0;
+  }
+
+  .barcode-view .overview-table thead {
+    display: none;
+  }
+
+  .barcode-view .overview-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+  }
+
+  .barcode-view .overview-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .barcode-view .overview-table tbody tr:hover {
+    background: var(--card);
+  }
+
+  .barcode-view .overview-table td,
+  .barcode-view .overview-table th {
+    display: block;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border-bottom: none;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .barcode-view .overview-table td:first-child {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+  }
+
+  .barcode-view .overview-table td.num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .barcode-view .overview-table td:last-child {
+    display: none;
+  }
 }
 
 /* --- User toggles (global header) --- */
