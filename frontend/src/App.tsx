@@ -83,7 +83,7 @@ export default function App() {
   const [overviewError, setOverviewError] = useState<string | null>(null);
 
   // Apply the current user to local auth state.
-  const applyUser = useCallback((user: CurrentUser) => {
+  const applyUser = useCallback((user: CurrentUser, resetHash: boolean) => {
     setAuthed(true);
     setIsAdmin(user.is_admin);
     setUsername(user.username);
@@ -93,7 +93,9 @@ export default function App() {
     if (user.selected_packstreet_id !== null) {
       setSelectedPackstreetId(user.selected_packstreet_id);
     }
-    window.location.hash = "";
+    if (resetHash) {
+      window.location.hash = "";
+    }
   }, []);
 
   // Log the user out when the session expires (refresh failed).
@@ -113,7 +115,7 @@ export default function App() {
     getCurrentUser()
       .then((user) => {
         if (!cancelled) {
-          applyUser(user);
+          applyUser(user, false);
         }
       })
       .catch(() => {
@@ -312,7 +314,7 @@ export default function App() {
         <header className="app__header">
           <h1>Kisten-Tracker</h1>
         </header>
-        <LoginForm onSuccess={applyUser} />
+        <LoginForm onSuccess={(user) => applyUser(user, true)} />
       </div>
     );
   }
