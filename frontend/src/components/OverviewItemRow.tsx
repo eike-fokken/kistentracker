@@ -11,42 +11,35 @@ export interface OverviewItemRowHandle {
 interface Props {
   groupId: number;
   item: GroupOverviewItem;
+  preferRent: boolean;
   onUpdated: (group: GroupSummary) => void;
   readonly?: boolean;
 }
 
 export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
-  function OverviewItemRow({ groupId, item, onUpdated, readonly = false }, ref) {
-    const [rentAmount, setRentAmount] = useState("0");
-    const [returnAmount, setReturnAmount] = useState("0");
+  function OverviewItemRow({ groupId, item, preferRent, onUpdated, readonly = false }, ref) {
+    const [amount, setAmount] = useState("0");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const isConsumable = item.item_class === "consumable";
 
-    const rentInputRef = useRef<HTMLInputElement>(null);
-    const returnInputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useImperativeHandle(ref, () => ({
       focusRent() {
-        rentInputRef.current?.focus();
+        if (preferRent) inputRef.current?.focus();
       },
       focusReturn() {
-        returnInputRef.current?.focus();
+        if (!preferRent) inputRef.current?.focus();
       },
     }));
-
-    const parsedReturn = Math.floor(Number(returnAmount));
-    const returnExceeds =
-      Number.isFinite(parsedReturn) &&
-      parsedReturn >= 1 &&
-      parsedReturn > item.quantity;
 
     function normalize(value: string): string {
       const parsed = Math.floor(Number(value));
       return Number.isFinite(parsed) && parsed >= 1 ? String(parsed) : "0";
     }
 
-    async function rent(raw: string) {
+    async function act(raw: string) {
       const quantity = Math.floor(Number(raw));
       if (!Number.isFinite(quantity) || quantity < 1) {
         setError("Menge muss eine positive Zahl sein.");
@@ -59,10 +52,10 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
         const updated = await changeQuantity(groupId, {
           item_type: item.item_type,
           quantity,
-          action: "rent",
+          action: preferRent ? "rent" : "return",
         });
         onUpdated(updated);
-        setRentAmount("0");
+        setAmount("0");
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Aktion fehlgeschlagen.");
       } finally {
@@ -70,29 +63,14 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
       }
     }
 
-    async function returnItem(raw: string) {
-      const quantity = Math.floor(Number(raw));
-      if (!Number.isFinite(quantity) || quantity < 1) {
-        setError("Menge muss eine positive Zahl sein.");
-        return;
-      }
+    const parsed = Math.floor(Number(amount));
+    const exceeds =
+      !preferRent &&
+      Number.isFinite(parsed) &&
+      parsed >= 1 &&
+      parsed > item.quantity;
 
-      setBusy(true);
-      setError(null);
-      try {
-        const updated = await changeQuantity(groupId, {
-          item_type: item.item_type,
-          quantity,
-          action: "return",
-        });
-        onUpdated(updated);
-        setReturnAmount("0");
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Aktion fehlgeschlagen.");
-      } finally {
-        setBusy(false);
-      }
-    }
+    const hasAction = !readonly && (preferRent || !isConsumable);
 
     return (
       <tr>
@@ -100,62 +78,35 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
         <td className={`num ${item.quantity < 0 ? "num--negative" : ""}`}>
           {item.quantity}
         </td>
+        {!readonly && (
         <td>
-          {!readonly && (
-          <div className="row-actions">
-            <div className="row-actions__group row-actions__group--rent">
-              <input
-                ref={rentInputRef}
-                type="number"
-                min={1}
-                value={rentAmount}
-                onChange={(e) => setRentAmount(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                onBlur={() => setRentAmount((v) => normalize(v))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void rent(rentAmount);
-                }}
-                disabled={busy}
-                aria-label={`Menge ${item.label} zum Ausgeben`}
-              />
-              <button
-                type="button"
-                className="btn btn--rent"
-                onClick={() => void rent(rentAmount)}
-                disabled={busy}
-              >
-                Ausgeben
-              </button>
-            </div>
-            {!isConsumable && (
-              <div className="row-actions__group row-actions__group--return">
-                <input
-                  ref={returnInputRef}
-                  type="number"
-                  min={1}
-                  value={returnAmount}
-                  onChange={(e) => setReturnAmount(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  onBlur={() => setReturnAmount((v) => normalize(v))}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void returnItem(returnAmount);
-                  }}
-                  disabled={busy}
-                  aria-label={`Menge ${item.label} zum Zurücknehmen`}
-                />
-                <button
-                  type="button"
-                  className="btn btn--return"
-                  onClick={() => void returnItem(returnAmount)}
-                  disabled={busy}
-                >
-                  Zurücknehmen
-                </button>
-              </div>
-            )}
+          {hasAction && (
+          <div className={`row-actions__group row-actions__group--${preferRent ? "rent" : "return"}`}>
+            <input
+              ref={inputRef}
+              type="number"
+              min={1}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              onBlur={() => setAmount((v) => normalize(v))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void act(amount);
+              }}
+              disabled={busy}
+              aria-label={`Menge ${item.label} zum ${preferRent ? "Ausgeben" : "Zurücknehmen"}`}
+            />
+            <button
+              type="button"
+              className={`btn ${preferRent ? "btn--rent" : "btn--return"}`}
+              onClick={() => void act(amount)}
+              disabled={busy}
+            >
+              {preferRent ? "Ausgeben" : "Zurücknehmen"}
+            </button>
           </div>
           )}
-          {returnExceeds && !error && (
+          {exceeds && !error && (
             <p className="banner banner--warning">
               Achtung: die Gruppe hat nur {item.quantity} Stück ausgeliehen. Die
               Rückgabe führt zu einem negativen Bestand.
@@ -163,6 +114,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
           )}
           {error && <p className="banner banner--error">{error}</p>}
         </td>
+        )}
       </tr>
     );
   },

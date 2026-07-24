@@ -453,6 +453,11 @@ export default function App() {
             onViewHistory={() => {
               window.location.hash = `/group/${route.id}/history`;
             }}
+            onToggleMode={() => {
+              const next = !preferRent;
+              setPreferRent(next);
+              void updateCurrentUser(undefined, next);
+            }}
             onGroupChanged={handleGroupUpdated}
             onDeleted={(deletedId) => {
               handleGroupDeleted(deletedId);

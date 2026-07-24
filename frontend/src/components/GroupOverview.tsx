@@ -24,6 +24,7 @@ interface Props {
   preferRent: boolean;
   onBack: () => void;
   onViewHistory: () => void;
+  onToggleMode: () => void;
   onGroupChanged: (group: GroupSummary) => void;
   onDeleted: (deletedId: number) => void;
 }
@@ -36,6 +37,7 @@ export function GroupOverview({
   preferRent,
   onBack,
   onViewHistory,
+  onToggleMode,
   onGroupChanged,
   onDeleted,
 }: Props) {
@@ -286,13 +288,38 @@ export function GroupOverview({
             </div>
           )}
 
+          {!data.packstreet.is_stock && (
+          <div
+            className={`barcode-mode-banner barcode-mode-banner--${preferRent ? "rent" : "return"}`}
+            onClick={onToggleMode}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleMode(); } }}
+          >
+            <div className="barcode-mode-banner__label">
+              {preferRent ? "AUSLEIHE-MODUS" : "RÜCKGABE-MODUS"}
+            </div>
+            <div className="barcode-mode-banner__desc">
+              {preferRent
+                ? "Mengen eingeben um auszugeben"
+                : "Mengen eingeben um zurückzunehmen"}
+            </div>
+          </div>
+          )}
+
+          {!data.packstreet.is_stock && (
+          <div className="barcode-input-area">
+            <input className="barcode-input barcode-input--spacer" disabled readOnly />
+          </div>
+          )}
+
           <div className="table-scroll">
           <table className="groups-table overview-table">
             <thead>
               <tr>
                 <th>Artikel</th>
                 <th className="num">Ausgeliehen</th>
-                {!data.packstreet.is_stock && <th>Ausgeben / Zurücknehmen</th>}
+                {!data.packstreet.is_stock && <th>{preferRent ? "Ausgeben" : "Zurücknehmen"}</th>}
               </tr>
             </thead>
             <tbody>
@@ -304,6 +331,7 @@ export function GroupOverview({
                     ref={index === 0 ? firstRowRef : undefined}
                     groupId={groupId}
                     item={item}
+                    preferRent={preferRent}
                     onUpdated={handleUpdated}
                     readonly={data.packstreet.is_stock}
                   />

@@ -25,7 +25,6 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanWarning, setScanWarning] = useState<string | null>(null);
   const [scanSuccess, setScanSuccess] = useState<string | null>(null);
-  const [crateQuantity, setCrateQuantity] = useState<number | null>(null);
 
   const [showCorrection, setShowCorrection] = useState(false);
 
@@ -37,8 +36,6 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
     try {
       const overview = await getGroupOverview(groupId);
       setData(overview);
-      const kisteItem = overview.items.find((it) => it.item_type === "kiste");
-      setCrateQuantity(kisteItem?.quantity ?? 0);
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -92,7 +89,6 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
         barcode: value,
         action: preferRent ? "rent" : "return",
       });
-      setCrateQuantity(result.quantity);
       if (result.warning) {
         setScanWarning(result.warning);
       } else {
@@ -172,12 +168,6 @@ export function BarcodeView({ groupId, preferRent, onBack, onViewHistory, onTogg
                 : "Gescannte Kisten werden zurückgenommen"}
             </div>
           </div>
-          )}
-
-          {!data.packstreet.is_stock && crateQuantity !== null && (
-            <div className="barcode-crate-count">
-              Kisten derzeit: <strong>{crateQuantity}</strong>
-            </div>
           )}
 
           {!data.packstreet.is_stock && (

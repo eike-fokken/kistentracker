@@ -333,11 +333,13 @@ body {
   background: var(--action-rent-light);
 }
 
-.row-actions input[type="number"] {
+.row-actions input[type="number"],
+.row-actions__group input[type="number"] {
   width: 4.5rem;
 }
 
-.row-actions .btn {
+.row-actions .btn,
+.row-actions__group .btn {
   padding: 0.35rem 0.7rem;
 }
 
@@ -1069,7 +1071,8 @@ select:focus {
     font-size: 1rem;
   }
 
-  .row-actions input[type="number"] {
+  .row-actions input[type="number"],
+  .row-actions__group input[type="number"] {
     width: 3.5rem;
   }
 
@@ -1174,14 +1177,16 @@ select:focus {
   opacity: 0.9;
 }
 
-.barcode-crate-count {
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  text-align: center;
-}
-
 .barcode-input-area {
   margin-bottom: 1rem;
+}
+
+.barcode-input--spacer {
+  visibility: hidden;
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+  opacity: 1;
 }
 
 .barcode-input {
