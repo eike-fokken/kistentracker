@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ApiError,
@@ -56,6 +56,17 @@ export function GroupOverview({
   const [showCorrection, setShowCorrection] = useState(false);
 
   const [groupDeleteError, setGroupDeleteError] = useState<string | null>(null);
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null);
+
+  useEffect(() => {
+    if (!data || data.packstreet.is_stock) return;
+    const timer = window.setTimeout(() => {
+      tableBodyRef.current
+        ?.querySelector<HTMLInputElement>("input[type='number']")
+        ?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [data, preferRent]);
 
   const handleUpdated = useCallback(
     (group: GroupSummary) => {
@@ -286,7 +297,7 @@ export function GroupOverview({
                 <th>{!data.packstreet.is_stock ? (preferRent ? "Ausgeben" : "Zurücknehmen") : ""}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={tableBodyRef}>
               {data.items
                 .filter((it) => showConsumables || it.item_class !== "consumable")
                 .map((item) => (

@@ -18,7 +18,7 @@ interface Props {
 
 export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
   function OverviewItemRow({ groupId, item, preferRent, onUpdated, readonly = false }, ref) {
-    const [amount, setAmount] = useState("0");
+    const [amount, setAmount] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const isConsumable = item.item_class === "consumable";
@@ -36,7 +36,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
 
     function normalize(value: string): string {
       const parsed = Math.floor(Number(value));
-      return Number.isFinite(parsed) && parsed >= 1 ? String(parsed) : "0";
+      return Number.isFinite(parsed) && parsed >= 1 ? String(parsed) : "";
     }
 
     async function act(raw: string) {
@@ -55,7 +55,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
           action: preferRent ? "rent" : "return",
         });
         onUpdated(updated);
-        setAmount("0");
+        setAmount("");
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Aktion fehlgeschlagen.");
       } finally {
@@ -90,7 +90,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
               onFocus={(e) => e.target.select()}
               onBlur={() => setAmount((v) => normalize(v))}
               onKeyDown={(e) => {
-                if (e.key === "Enter") void act(amount);
+                if (e.key === "Enter") { const p = Math.floor(Number(amount)); if (Number.isFinite(p) && p >= 1) void act(amount); }
               }}
               disabled={busy}
               aria-label={`Menge ${item.label} zum ${preferRent ? "Ausgeben" : "Zurücknehmen"}`}
@@ -99,7 +99,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
               type="button"
               className={`btn ${preferRent ? "btn--rent" : "btn--return"}`}
               onClick={() => void act(amount)}
-              disabled={busy}
+              disabled={busy || !Number.isFinite(parsed) || parsed < 1}
             >
               {preferRent ? "Ausgeben" : "Zurücknehmen"}
             </button>

@@ -39,7 +39,7 @@ export function BarcodeView({ groupId, preferRent, data, loading, error, onReloa
     requestAnimationFrame(() => {
       inputRef.current?.focus();
     });
-  }, [data]);
+  }, [data, preferRent]);
 
   useEffect(() => {
     if (!scanSuccess) return;
