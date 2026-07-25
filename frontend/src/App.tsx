@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ApiError,
@@ -49,6 +49,9 @@ function parseRoute(hash: string): Route {
   return { view: "list" };
 }
 
+/** Seconds of inactivity after which the app navigates back from overview/history to the list view. */
+const OVERVIEW_IDLE_TIMEOUT_SEC = 60;
+
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authed, setAuthed] = useState(false);
@@ -64,6 +67,8 @@ export default function App() {
     null,
   );
   const [search, setSearch] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const lastActivityRef = useRef(Date.now());
 
   const [packstreetGroups, setPackstreetGroups] = useState<GroupSummary[]>([]);
   const [route, setRoute] = useState<Route>(() =>
@@ -140,6 +145,54 @@ export default function App() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  // Track user activity for idle detection.
+  useEffect(() => {
+    const update = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener("mousemove", update, { passive: true });
+    window.addEventListener("keydown", update, { passive: true });
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("click", update, { passive: true });
+    window.addEventListener("touchstart", update, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", update);
+      window.removeEventListener("keydown", update);
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("click", update);
+      window.removeEventListener("touchstart", update);
+    };
+  }, []);
+
+  // When the user has been idle for OVERVIEW_IDLE_TIMEOUT_SEC on the overview
+  // or history page, navigate back to the current packstreet list.
+  useEffect(() => {
+    if (route.view !== "overview" && route.view !== "history") return;
+
+    const timer = window.setInterval(() => {
+      const idle = Date.now() - lastActivityRef.current;
+      if (idle > OVERVIEW_IDLE_TIMEOUT_SEC * 1000) {
+        window.location.hash = "";
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [route.view]);
+
+  // Don't count loading time against the idle timeout.
+  useEffect(() => {
+    if (!overviewLoading) {
+      lastActivityRef.current = Date.now();
+    }
+  }, [overviewLoading]);
+
+  // Focus the search input when arriving at the list view.
+  useEffect(() => {
+    if (route.view !== "list") return;
+    const timer = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [route.view]);
 
   const loadPackstreets = useCallback(async () => {
     const loaded = await listPackstreets();
@@ -443,6 +496,7 @@ export default function App() {
           onChange={(e) => {
             setSearch(e.target.value);
           }}
+          ref={searchInputRef}
           aria-label="Gruppen durchsuchen"
         />
       </form>
