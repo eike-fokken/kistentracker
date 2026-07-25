@@ -149,6 +149,7 @@ class RentalActionOut(Schema):
     username: str | None
     barcode: str | None
     timestamp: datetime
+    deleted_at: datetime | None
 
 
 class UpdateActionIn(Schema):

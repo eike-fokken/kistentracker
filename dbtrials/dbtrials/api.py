@@ -27,6 +27,7 @@ from ninja_jwt.controller import NinjaJWTDefaultController
 from dbtrials.models import (
     ActionType,
     Cookinggroup,
+    Correction,
     Crate,
     ItemClass,
     ItemType,
@@ -145,8 +146,9 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
             "username": action.user.get_username() if action.user else None,
             "barcode": action.barcode,
             "timestamp": action.timestamp,
+            "deleted_at": action.deleted_at,
         }
-        for action in group.actions.select_related("user")[:10]
+        for action in group.actions.filter(deleted_at__isnull=True).select_related("user")[:10]
     ]
     return {
         "id": group.pk,
@@ -543,7 +545,7 @@ def group_history(
             if end_date is not None
             else datetime(2099, 12, 31, tzinfo=timezone.get_current_timezone())
         )
-        pre_actions = group.actions.filter(timestamp__lt=start).order_by("timestamp")
+        pre_actions = group.actions.filter(deleted_at__isnull=True, timestamp__lt=start).order_by("timestamp")
         for action in pre_actions:
             item_type = action.item_type
             if item_type not in running:
@@ -556,10 +558,10 @@ def group_history(
             running[item_type] = running[item_type] + delta
         end_inclusive = end + timedelta(days=1)
         actions = group.actions.filter(
-            timestamp__gte=start, timestamp__lt=end_inclusive
+            deleted_at__isnull=True, timestamp__gte=start, timestamp__lt=end_inclusive
         ).order_by("timestamp")
     else:
-        actions = group.actions.order_by("timestamp")
+        actions = group.actions.filter(deleted_at__isnull=True).order_by("timestamp")
 
     points: dict[str, list[dict[str, Any]]] = {it.key: [] for it in item_types}
 
@@ -1054,7 +1056,7 @@ def recent_actions(
     by the DELETE endpoint.
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
-    qs = group.actions.select_related("user").order_by("-timestamp")
+    qs = group.actions.filter(deleted_at__isnull=True).select_related("user").order_by("-timestamp")
 
     return [
         {
@@ -1065,6 +1067,7 @@ def recent_actions(
             "username": action.user.get_username() if action.user else None,
             "barcode": action.barcode,
             "timestamp": action.timestamp,
+            "deleted_at": action.deleted_at,
         }
         for action in qs
     ]
@@ -1086,6 +1089,9 @@ def update_action(
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
     action = get_object_or_404(RentalAction, pk=action_id, group=group)
+    if action.deleted_at is not None:
+        raise HttpError(400, "Gelöschte Aktionen können nicht bearbeitet werden.")
+    old_quantity = action.quantity
     user = getattr(request, "auth")
     is_admin = getattr(user, "is_admin", False)
 
@@ -1118,6 +1124,13 @@ def update_action(
         rental.save(update_fields=["quantity"])
 
         action.save(update_fields=["quantity"])
+
+        Correction.objects.create(
+            rental_action=action,
+            corrected_by=user,
+            old_quantity=old_quantity,
+            new_quantity=payload.quantity,
+        )
 
     group.refresh_from_db()
     _validate_after_mutation()
@@ -1164,7 +1177,10 @@ def delete_action(
             else:
                 rental.quantity += action.quantity
             rental.save(update_fields=["quantity"])
-        action.delete()
+
+        action.deleted_at = timezone.now()
+        action.deleted_by = user
+        action.save(update_fields=["deleted_at", "deleted_by"])
 
     group.refresh_from_db()
     _validate_after_mutation()
@@ -1181,7 +1197,7 @@ def _check_integrity() -> list[dict[str, Any]]:
     for group in Cookinggroup.objects.all():
         rentals = {r.item_type: r for r in Rental.objects.filter(group=group)}
         sums: dict[str, int] = {}
-        for action in group.actions.all():
+        for action in group.actions.filter(deleted_at__isnull=True):
             delta = (
                 action.quantity
                 if action.action == ActionType.RENT

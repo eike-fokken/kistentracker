@@ -203,6 +203,13 @@ class RentalAction(Model):
     quantity = IntegerField()
     barcode = CharField(max_length=40, null=True)
     timestamp = DateTimeField(auto_now_add=True)
+    deleted_at = DateTimeField(null=True, default=None)
+    deleted_by = ForeignKey(
+        User,
+        on_delete=SET_NULL,
+        null=True,
+        related_name="deleted_actions",
+    )
 
     class Meta:
         ordering = ["-timestamp"]
@@ -211,4 +218,33 @@ class RentalAction(Model):
         return (
             f"{self.timestamp:%Y-%m-%d %H:%M} {self.action} "
             f"{self.quantity} x {self.item_type} ({self.group.name})"
+        )
+
+
+class Correction(Model):
+    """Records a correction to a rental action — the quantity before and after the edit."""
+
+    rental_action = ForeignKey(
+        RentalAction,
+        on_delete=CASCADE,
+        related_name="corrections",
+    )
+    corrected_by = ForeignKey(
+        User,
+        on_delete=SET_NULL,
+        null=True,
+        related_name="corrections",
+    )
+    old_quantity = IntegerField()
+    new_quantity = IntegerField()
+    timestamp = DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.timestamp:%Y-%m-%d %H:%M} correction "
+            f"{self.old_quantity} → {self.new_quantity} "
+            f"({self.rental_action.item_type} by {self.rental_action.group.name})"
         )
