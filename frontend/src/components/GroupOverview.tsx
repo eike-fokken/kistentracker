@@ -198,15 +198,13 @@ export function GroupOverview({
               Diagramme anzeigen
             </button>
             )}
-            {
-            <button
+            {<button
               type="button"
               className="btn btn--ghost"
               onClick={onViewBarcodes}
             >
               Barcodes anzeigen
-            </button>
-            }
+            </button>}
             {!data.packstreet.is_stock && (
             <button
               type="button"
