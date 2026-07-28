@@ -109,7 +109,6 @@ class ActionType(TextChoices):
 
     RENT = "rent", "Ausleihe"
     RETURN = "return", "Rückgabe"
-    CORRECT = "correct", "Korrektur"
 
 
 class Packstreet(Model):
