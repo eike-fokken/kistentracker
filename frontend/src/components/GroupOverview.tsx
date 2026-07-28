@@ -198,7 +198,7 @@ export function GroupOverview({
               Diagramme anzeigen
             </button>
             )}
-            {!data.packstreet.is_stock && (
+            {
             <button
               type="button"
               className="btn btn--ghost"
@@ -206,7 +206,7 @@ export function GroupOverview({
             >
               Barcodes anzeigen
             </button>
-            )}
+            }
             {!data.packstreet.is_stock && (
             <button
               type="button"
