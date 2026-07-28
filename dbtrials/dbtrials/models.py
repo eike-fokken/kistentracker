@@ -200,7 +200,7 @@ class RentalAction(Model):
     action = CharField(max_length=10, choices=ActionType.choices)
     item_type = CharField(max_length=50)
     quantity = IntegerField()
-    barcode = CharField(max_length=40, null=True)
+    barcode = CharField(max_length=40, null=True, db_index=True)
     timestamp = DateTimeField(auto_now_add=True)
     deleted_at = DateTimeField(null=True, default=None)
     deleted_by = ForeignKey(
