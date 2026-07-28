@@ -646,6 +646,19 @@ def download_stock_csv(request: HttpRequest) -> HttpResponse:
 
 _CSV_HEADER = ("Gruppenname", "Kochgruppen-ID", "Packstraße")
 
+class InvalidImportHeadersError(Exception):
+    pass
+
+
+def _require_header(required: tuple[str, ...], fieldnames: list[str]) -> None:
+    """Raise InvalidImportHeadersError if any required header is missing."""
+    req = set(required)
+    have = set(fieldnames)
+    missing = req - have
+    if missing:
+        raise InvalidImportHeadersError(", ".join(sorted(missing)))
+
+
 
 @router.post(
     "/groups/import",
@@ -658,10 +671,13 @@ def import_groups(
     """Bulk-create groups from a CSV file. Admin only.
 
     The CSV must include a header row with the exact columns ``Gruppenname``,
-    ``Kochgruppen-ID`` and ``Packstraße``. A group whose name or internal ID
-    already exists is left untouched and reported under ``skipped``. Rows that
-    omit a field or reference an unknown packstreet are reported under
-    ``errors``. Packstreets must already exist -- the import never creates them.
+    ``Kochgruppen-ID`` and ``Packstraße``. A group whose name, internal ID and
+    packstreet all match an existing group is left untouched and reported under
+    ``skipped``. If a name or ID matches an existing group but the other
+    properties differ, the row is reported as an error. Rows that omit a field
+    are reported under ``errors``. Unknown packstreets are created
+    automatically. The entire import runs in a single transaction -- if any
+    unrecoverable error occurs, nothing is persisted.
     """
     try:
         text = file.read().decode("utf-8-sig")
@@ -674,62 +690,96 @@ def import_groups(
     skipped: list[dict[str, str]] = []
     errors: list[str] = []
 
-    reader = csv.DictReader(io.StringIO(text))
-    if reader.fieldnames is None:
-        raise HttpError(400, "Die CSV-Datei enthält keine Daten.")
-    fieldnames = [col.strip() for col in reader.fieldnames]
+    try:
+        reader = csv.DictReader(io.StringIO(text))
+        if reader.fieldnames is None:
+            raise HttpError(400, "Die CSV-Datei enthält keine Daten.")
+        fieldnames = [col.strip() for col in reader.fieldnames]
 
-    missing = [req for req in _CSV_HEADER if req not in fieldnames]
-    if missing:
-        known = ", ".join(fieldnames)
-        need = ", ".join(missing)
+        _require_header(_CSV_HEADER, fieldnames)
+    except InvalidImportHeadersError as exc:
         raise HttpError(
             400,
-            f"Die Kopfzeile der CSV-Datei muss die Spalten {need} enthalten. "
-            f"Erkannt wurden: {known}.",
-        )
+            f"Die CSV-Datei benötigt die Spalten: {exc}.",
+        ) from exc
 
-    for row in reader:
-        line_number = reader.line_num
-        if not any(v.strip() for v in row.values()):
-            continue
-        name = (row.get("Gruppenname") or "").strip()
-        internal_id = (row.get("Kochgruppen-ID") or "").strip()
-        packstreet_name = (row.get("Packstraße") or "").strip()
-        if not name or not internal_id or not packstreet_name:
-            errors.append(
-                f"Zeile {line_number}: Gruppenname, Kochgruppen-ID und Packstraße "
-                "sind alle erforderlich."
-            )
-            continue
-        packstreet = Packstreet.objects.filter(name__iexact=packstreet_name).first()
-        if packstreet is None:
-            errors.append(
-                f"Zeile {line_number}: unbekannte Packstraße „{packstreet_name}“."
-            )
-            continue
-        row_out = {
-            "name": name,
-            "internal_id": internal_id,
-            "packstreet": packstreet.name,
-        }
-        if (
-            Cookinggroup.objects.filter(name=name).exists()
-            or Cookinggroup.objects.filter(internal_id=internal_id).exists()
-        ):
-            skipped.append(row_out)
-            continue
-        try:
-            with transaction.atomic():
+    with transaction.atomic():
+        for row in reader:
+            line_number = reader.line_num
+            if not any(v.strip() for v in row.values()):
+                continue
+            name = (row.get("Gruppenname") or "").strip()
+            internal_id = (row.get("Kochgruppen-ID") or "").strip()
+            packstreet_name = (row.get("Packstraße") or "").strip()
+            if not name or not internal_id or not packstreet_name:
+                errors.append(
+                    f"Zeile {line_number}: Gruppenname, Kochgruppen-ID und Packstraße "
+                    "sind alle erforderlich."
+                )
+                continue
+            packstreet = Packstreet.objects.filter(name__iexact=packstreet_name).first()
+            if packstreet is None:
+                packstreet = Packstreet.objects.create(name=packstreet_name)
+            row_out = {
+                "name": name,
+                "internal_id": internal_id,
+                "packstreet": packstreet.name,
+            }
+            existing_by_name = Cookinggroup.objects.filter(name=name).first()
+            existing_by_id = Cookinggroup.objects.filter(internal_id=internal_id).first()
+            if existing_by_name or existing_by_id:
+                existing = existing_by_name or existing_by_id
+                if (
+                    existing.name == name
+                    and existing.internal_id == internal_id
+                    and existing.packstreet == packstreet
+                ):
+                    skipped.append(row_out)
+                else:
+                    reason_parts: list[str] = []
+                    if existing_by_name:
+                        reason_parts.append(f"Name „{name}“")
+                        if existing.internal_id != internal_id:
+                            reason_parts.append(
+                                f"ID {existing.internal_id} (CSV: {internal_id})"
+                            )
+                        if existing.packstreet != packstreet:
+                            reason_parts.append(
+                                f"Packstraße {existing.packstreet.name} (CSV: {packstreet_name})"
+                            )
+                    if existing_by_id:
+                        reason_parts.append(f"ID „{internal_id}“")
+                        if existing.name != name:
+                            reason_parts.append(
+                                f"Name {existing.name} (CSV: {name})"
+                            )
+                        if existing.packstreet != packstreet:
+                            reason_parts.append(
+                                f"Packstraße {existing.packstreet.name} (CSV: {packstreet_name})"
+                            )
+                    reason = ", ".join(reason_parts)
+                    errors.append(
+                        f"Zeile {line_number}: {reason} bereits vorhanden mit "
+                        f"unterschiedlichen Werten"
+                    )
+                continue
+            try:
                 Cookinggroup.objects.create(
                     name=name, internal_id=internal_id, packstreet=packstreet
                 )
-        except IntegrityError:
-            skipped.append(row_out)
-            continue
-        created.append(row_out)
+            except IntegrityError:
+                skipped.append(row_out)
+                continue
+            created.append(row_out)
 
-    return 200, {"created": created, "skipped": skipped, "errors": errors}
+        if errors:
+            detail = "\n".join(errors)
+            raise HttpError(
+                400,
+                f"Import fehlgeschlagen:\n{detail}\n\n"
+                "Es wurden keine Änderungen vorgenommen.",
+            )
+        return 200, {"created": created, "skipped": skipped, "errors": errors}
 
 
 @router.put(

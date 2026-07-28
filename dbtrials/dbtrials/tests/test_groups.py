@@ -277,13 +277,13 @@ class GroupFeatureTests(TestCase):
             HTTP_AUTHORIZATION=header or self.admin_header,
         )
 
-    def test_import_creates_new_groups_and_skips_existing(self) -> None:
+    def test_import_skips_identical_group_and_errors_on_conflicting(self) -> None:
         Packstreet.objects.create(name="Alpha")
         self._create_group("Existing", "1", Packstreet.objects.get(name="Alpha").pk)
 
         csv_content = (
             "Gruppenname,Kochgruppen-ID,Packstraße\n"
-            "Existing,99,Alpha\n"
+            "Existing,1,Alpha\n"
             "Fresh,2,Alpha\n"
         )
         response = self._import_csv(csv_content)
@@ -293,19 +293,46 @@ class GroupFeatureTests(TestCase):
         self.assertEqual([r["name"] for r in body["skipped"]], ["Existing"])
         self.assertEqual(body["errors"], [])
         self.assertTrue(Cookinggroup.objects.filter(name="Fresh").exists())
-        # The pre-existing group was left untouched (number unchanged).
         self.assertEqual(Cookinggroup.objects.get(name="Existing").internal_id, "1")
 
-    def test_import_reports_unknown_packstreet_as_error(self) -> None:
+    def test_import_rejects_conflicting_group_properties(self) -> None:
         Packstreet.objects.create(name="Alpha")
+        self._create_group("Existing", "1", Packstreet.objects.get(name="Alpha").pk)
+
+        csv_content = (
+            "Gruppenname,Kochgruppen-ID,Packstraße\n"
+            "Existing,99,Alpha\n"
+        )
+        response = self._import_csv(csv_content)
+        self.assertEqual(response.status_code, 400, response.content)
+        body = response.json()
+        self.assertIn("Import fehlgeschlagen", body["detail"])
+        self.assertNotIn("created", body)
+        self.assertFalse(Cookinggroup.objects.filter(name="Fresh").exists())
+
+    def test_import_creates_unknown_packstreet(self) -> None:
         response = self._import_csv(
             "Gruppenname,Kochgruppen-ID,Packstraße\nFresh,2,Nowhere\n"
         )
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(body["created"], [])
-        self.assertEqual(len(body["errors"]), 1)
-        self.assertFalse(Cookinggroup.objects.filter(name="Fresh").exists())
+        self.assertEqual(len(body["created"]), 1)
+        self.assertEqual(body["errors"], [])
+        self.assertTrue(Cookinggroup.objects.filter(name="Fresh").exists())
+        self.assertTrue(Packstreet.objects.filter(name="Nowhere").exists())
+
+    def test_import_duplicates_within_same_file_are_skipped(self) -> None:
+        Packstreet.objects.create(name="Alpha")
+        csv_content = (
+            "Gruppenname,Kochgruppen-ID,Packstraße\n"
+            "Dup,1,Alpha\n"
+            "Dup,1,Alpha\n"
+        )
+        response = self._import_csv(csv_content)
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body["created"]), 1)
+        self.assertEqual(len(body["skipped"]), 1)
 
     def test_import_requires_admin(self) -> None:
         Packstreet.objects.create(name="Alpha")
