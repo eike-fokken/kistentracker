@@ -91,9 +91,9 @@ rm -f "$BACKEND_UNIT_DIR/$BACKEND_SERVICE_UNIT"
 systemctl_user daemon-reload
 
 # Backup timer.
-$SYSTEMCTL disable --now "$BACKUP_TIMER_UNIT" "$BACKUP_SERVICE_UNIT" 2>/dev/null || true
-$SYSTEMCTL stop "$BACKUP_SERVICE_UNIT" "$BACKUP_TIMER_UNIT" 2>/dev/null || true
-rm -f "$UNIT_DIR/$BACKUP_SERVICE_UNIT" "$UNIT_DIR/$BACKUP_TIMER_UNIT"
+systemctl_user disable --now "$BACKUP_TIMER_UNIT" "$BACKUP_SERVICE_UNIT" 2>/dev/null || true
+systemctl_user stop "$BACKUP_SERVICE_UNIT" "$BACKUP_TIMER_UNIT" 2>/dev/null || true
+rm -f "$BACKEND_UNIT_DIR/$BACKUP_SERVICE_UNIT" "$BACKEND_UNIT_DIR/$BACKUP_TIMER_UNIT"
 
 $SYSTEMCTL daemon-reload
 
@@ -130,10 +130,17 @@ say "Installing backend service"
 	systemctl_user enable --now "$BACKEND_SERVICE_UNIT"
 
 say "Installing backup timer"
-install -m 0644 "$GEN_DIR/$BACKUP_SERVICE_UNIT" "$UNIT_DIR/"
-install -m 0644 "$GEN_DIR/$BACKUP_TIMER_UNIT" "$UNIT_DIR/"
-$SYSTEMCTL daemon-reload
-$SYSTEMCTL enable --now "$BACKUP_TIMER_UNIT"
+if [[ "$MODE" == "system" ]]; then
+	sudo -u "$RUN_AS_USER" mkdir -p "$BACKEND_UNIT_DIR"
+	sudo -u "$RUN_AS_USER" install -m 0644 "$GEN_DIR/$BACKUP_SERVICE_UNIT" "$BACKEND_UNIT_DIR/"
+	sudo -u "$RUN_AS_USER" install -m 0644 "$GEN_DIR/$BACKUP_TIMER_UNIT" "$BACKEND_UNIT_DIR/"
+else
+	mkdir -p "$BACKEND_UNIT_DIR"
+	install -m 0644 "$GEN_DIR/$BACKUP_SERVICE_UNIT" "$BACKEND_UNIT_DIR/"
+	install -m 0644 "$GEN_DIR/$BACKUP_TIMER_UNIT" "$BACKEND_UNIT_DIR/"
+fi
+systemctl_user daemon-reload
+systemctl_user enable --now "$BACKUP_TIMER_UNIT"
 
 # --- Report ------------------------------------------------------------------
 say "Done. Current status:"
@@ -150,12 +157,12 @@ else
 	echo 'To start at boot without an active login: loginctl enable-linger "$USER"'
 fi
 echo
-$SYSTEMCTL --no-pager status "$BACKUP_TIMER_UNIT" 2>/dev/null || true
+systemctl_user --no-pager status "$BACKUP_TIMER_UNIT" 2>/dev/null || true
 echo
 echo "Backup timer: fires hourly (with a random delay), writing to $BACKUP_DIR."
-echo "  To run a backup now:  $SYSTEMCTL start $BACKUP_SERVICE_UNIT"
-echo "  To view logs:         journalctl -u $BACKUP_SERVICE_UNIT"
-echo "  To list next run:     $SYSTEMCTL list-timers $BACKUP_TIMER_UNIT"
+echo "  To run a backup now:  ${SYSTEMCTL_USER_CMD[*]} start $BACKUP_SERVICE_UNIT"
+echo "  To view logs:         ${SYSTEMCTL_USER_CMD[*]} -u $BACKUP_SERVICE_UNIT"
+echo "  To list next run:     ${SYSTEMCTL_USER_CMD[*]} list-timers $BACKUP_TIMER_UNIT"
 if [[ "$MODE" == "system" ]]; then
 	echo "  To view backend logs: sudo -u $RUN_AS_USER journalctl --user -u $BACKEND_SERVICE_UNIT"
 else

@@ -1,7 +1,5 @@
 [Unit]
 Description=SQLite backup of Kistentracker database ({{DATA_VOLUME}} volume, podman)
-Documentation=https://github.com/anomalyco/kistentracker
-After=network-online.target
 {{AFTER_BACKEND_LINE}}
 
 [Service]
@@ -28,5 +26,3 @@ print('Backup written to', dst_path, file=sys.stderr)"
 # Compress the latest uncompressed backup and remove the original.
 ExecStartPost=sh -c 'cd {{BACKUP_DIR}} && for f in db-*.sqlite3; do [ -f "$$f" ] && zip -mq "$$(basename "$$f" .sqlite3).zip" "$$f" && break; done'
 
-[Install]
-WantedBy=multi-user.target

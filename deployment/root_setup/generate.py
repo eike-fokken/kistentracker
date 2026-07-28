@@ -430,14 +430,15 @@ def _print_run_as_instructions(
     backup_dir = context["BACKUP_DIR"]
     timer_unit = "backup-db.timer"
     service_unit = "backup-db.service"
-    print("--- Database backup (systemd timer, install as root) ---")
-    print(f"  sudo install -d -m 0755 {backup_dir}")
-    print(f"  sudo install -m 0644 {output_dir / service_unit} /etc/systemd/system/")
-    print(f"  sudo install -m 0644 {output_dir / timer_unit} /etc/systemd/system/")
-    print("  sudo systemctl daemon-reload")
-    print(f"  sudo systemctl enable --now {timer_unit}")
-    print(f"  # Run once immediately to test: sudo systemctl start {service_unit}")
-    print(f"  # Inspect with: journalctl -u {service_unit}")
+    print("--- Database backup (systemd timer, install as user unit) ---")
+    print(f"  sudo -u {run_as} mkdir -p ~{run_as}/.config/systemd/user")
+    print(f"  sudo -u {run_as} install -m 0644 {output_dir / service_unit} ~{run_as}/.config/systemd/user/")
+    print(f"  sudo -u {run_as} install -m 0644 {output_dir / timer_unit} ~{run_as}/.config/systemd/user/")
+    print(f"  install -d -m 0755 {backup_dir}")
+    print(f"  sudo -u {run_as} systemctl --user daemon-reload")
+    print(f"  sudo -u {run_as} systemctl --user enable --now {timer_unit}")
+    print(f"  # Run once immediately to test: sudo -u {run_as} systemctl --user start {service_unit}")
+    print(f"  # Inspect with: sudo -u {run_as} journalctl --user -u {service_unit}")
 
 
 if __name__ == "__main__":
