@@ -1353,3 +1353,10 @@ select:focus {
   height: 2.9rem;
 }
 
+/* --- Barcodes page --- */
+
+.barcodes-page__barcode {
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+

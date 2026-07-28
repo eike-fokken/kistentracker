@@ -231,6 +231,19 @@ class CrateScanOut(Schema):
     quantity: int
 
 
+class BarcodeEntryOut(Schema):
+    """A single barcode entry with its last-seen timestamp."""
+
+    barcode: str
+    last_seen_at: datetime
+
+
+class GroupBarcodesOut(Schema):
+    """List of barcodes currently expected to be at a group."""
+
+    barcodes: list[BarcodeEntryOut]
+
+
 class UnexpectedReturnOut(Schema):
     """A crate returned by this group that was expected to be at another group."""
 

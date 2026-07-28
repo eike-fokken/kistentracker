@@ -27,6 +27,7 @@ interface Props {
   onReload: () => void;
   onBack: () => void;
   onViewHistory: () => void;
+  onViewBarcodes: () => void;
   onToggleMode: () => void;
   onGroupChanged: (group: GroupSummary) => void;
   onDeleted: (deletedId: number) => void;
@@ -45,6 +46,7 @@ export function GroupOverview({
   onReload,
   onBack,
   onViewHistory,
+  onViewBarcodes,
   onToggleMode,
   onGroupChanged,
   onDeleted,
@@ -194,6 +196,15 @@ export function GroupOverview({
               onClick={onViewHistory}
             >
               Diagramme anzeigen
+            </button>
+            )}
+            {!data.packstreet.is_stock && (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={onViewBarcodes}
+            >
+              Barcodes anzeigen
             </button>
             )}
             {!data.packstreet.is_stock && (

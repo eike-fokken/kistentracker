@@ -4,6 +4,7 @@ import type {
   CrateScanOut,
   Packstreet,
   CurrentUser,
+  GroupBarcodes,
   GroupHistory,
   GroupImportResult,
   GroupOverview,
@@ -403,4 +404,8 @@ export function scanCrate(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function fetchGroupBarcodes(groupId: number): Promise<GroupBarcodes> {
+  return request<GroupBarcodes>(`/groups/${groupId}/barcodes`);
 }

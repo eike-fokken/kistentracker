@@ -48,6 +48,7 @@ from dbtrials.schemas import (
     CookinggroupIn,
     CrateScanIn,
     CrateScanOut,
+    GroupBarcodesOut,
     GroupHistoryOut,
     GroupImportResultOut,
     GroupOverviewOut,
@@ -886,6 +887,27 @@ def group_overview(request: HttpRequest, group_id: int) -> dict[str, Any]:
         Cookinggroup.objects.select_related("packstreet"), pk=group_id
     )
     return _group_overview(group)
+
+
+@router.get(
+    "/groups/{group_id}/barcodes",
+    response=GroupBarcodesOut,
+)
+@require_permissions(IsAuthenticated)
+def group_barcodes(request: HttpRequest, group_id: int) -> dict[str, Any]:
+    """List all crate barcodes currently expected at a group."""
+    group = get_object_or_404(Cookinggroup, pk=group_id)
+    crates_qs = (
+        Crate.objects.filter(last_seen_with=group)
+        .order_by("barcode")
+        .values("barcode", "last_seen_at")
+    )
+    return {
+        "barcodes": [
+            {"barcode": c["barcode"], "last_seen_at": c["last_seen_at"]}
+            for c in crates_qs
+        ]
+    }
 
 
 @router.post(

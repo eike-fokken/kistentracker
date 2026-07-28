@@ -161,3 +161,12 @@ export interface CrateScanOut {
   warning: string | null;
   quantity: number;
 }
+
+export interface BarcodeEntry {
+  barcode: string;
+  last_seen_at: string;
+}
+
+export interface GroupBarcodes {
+  barcodes: BarcodeEntry[];
+}

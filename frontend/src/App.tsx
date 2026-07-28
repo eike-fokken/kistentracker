@@ -19,6 +19,7 @@ import { CreateGroupForm } from "./components/CreateGroupForm";
 import { DataImport } from "./components/DataImport";
 import { GroupHistory } from "./components/GroupHistory";
 import { GroupOverview } from "./components/GroupOverview";
+import { GroupBarcodes } from "./components/GroupBarcodes";
 import { GroupsTable } from "./components/GroupsTable";
 import { ItemTypeManager } from "./components/ItemTypeManager";
 import { LoginForm } from "./components/LoginForm";
@@ -29,6 +30,7 @@ type Route =
   | { view: "list" }
   | { view: "overview"; id: number }
   | { view: "history"; id: number }
+  | { view: "barcodes"; id: number }
   | { view: "search"; q: string };
 
 /** Read the current view from the URL hash. */
@@ -36,6 +38,10 @@ function parseRoute(hash: string): Route {
   const history = hash.match(/^#\/group\/(\d+)\/history$/);
   if (history) {
     return { view: "history", id: Number(history[1]) };
+  }
+  const barcodes = hash.match(/^#\/group\/(\d+)\/barcodes$/);
+  if (barcodes) {
+    return { view: "barcodes", id: Number(barcodes[1]) };
   }
   const overview = hash.match(/^#\/group\/(\d+)$/);
   if (overview) {
@@ -167,7 +173,7 @@ export default function App() {
   // When the user has been idle for OVERVIEW_IDLE_TIMEOUT_SEC on the overview
   // or history page, navigate back to the current packstreet list.
   useEffect(() => {
-    if (route.view !== "overview" && route.view !== "history") return;
+    if (route.view !== "overview" && route.view !== "history" && route.view !== "barcodes") return;
 
     const timer = window.setInterval(() => {
       const idle = Date.now() - lastActivityRef.current;
@@ -537,6 +543,13 @@ export default function App() {
             window.location.hash = `/group/${route.id}`;
           }}
         />
+      ) : route.view === "barcodes" ? (
+        <GroupBarcodes
+          groupId={route.id}
+          onBack={() => {
+            window.location.hash = `/group/${route.id}`;
+          }}
+        />
       ) : route.view === "overview" ? (
         !barcodeView ? (
           <GroupOverview
@@ -555,6 +568,9 @@ export default function App() {
             }}
             onViewHistory={() => {
               window.location.hash = `/group/${route.id}/history`;
+            }}
+            onViewBarcodes={() => {
+              window.location.hash = `/group/${route.id}/barcodes`;
             }}
             onToggleMode={() => {
               const next = !preferRent;
@@ -581,6 +597,9 @@ export default function App() {
             }}
             onViewHistory={() => {
               window.location.hash = `/group/${route.id}/history`;
+            }}
+            onViewBarcodes={() => {
+              window.location.hash = `/group/${route.id}/barcodes`;
             }}
             onToggleMode={() => {
               const next = !preferRent;

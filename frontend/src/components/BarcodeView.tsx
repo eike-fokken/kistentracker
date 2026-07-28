@@ -17,10 +17,11 @@ interface Props {
   onReload: () => void;
   onBack: () => void;
   onViewHistory: () => void;
+  onViewBarcodes: () => void;
   onToggleMode: () => void;
 }
 
-export function BarcodeView({ groupId, username, preferRent, data, loading, error, onReload, onBack, onViewHistory, onToggleMode }: Props) {
+export function BarcodeView({ groupId, username, preferRent, data, loading, error, onReload, onBack, onViewHistory, onViewBarcodes, onToggleMode }: Props) {
   const [barcode, setBarcode] = useState("");
   const [busy, setBusy] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -120,6 +121,13 @@ export function BarcodeView({ groupId, username, preferRent, data, loading, erro
                 onClick={onViewHistory}
               >
                 Diagramme anzeigen
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={onViewBarcodes}
+              >
+                Barcodes anzeigen
               </button>
               <button
                 type="button"
