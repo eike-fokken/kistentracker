@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate as django_authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.db import IntegrityError, transaction
-from django.db.models import ProtectedError, Q
+from django.db.models import OuterRef, ProtectedError, Q, Subquery
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -60,6 +60,7 @@ from dbtrials.schemas import (
     PackstreetOut,
     RentalActionOut,
     RentalItemOut,
+    UnexpectedReturnOut,
     UpdateActionIn,
     UserOut,
     UserUpdateIn,
@@ -1071,6 +1072,62 @@ def recent_actions(
         }
         for action in qs
     ]
+
+
+@router.get(
+    "/groups/{group_id}/unexpected-returns",
+    response=list[UnexpectedReturnOut],
+)
+@require_permissions(IsAuthenticated)
+def unexpected_returns(
+    request: HttpRequest, group_id: int
+) -> list[dict[str, Any]]:
+    """Return barcodes this group returned that were expected to be at another group."""
+    group = get_object_or_404(Cookinggroup, pk=group_id)
+
+    return_actions = RentalAction.objects.filter(
+        group=group,
+        action=ActionType.RETURN,
+        barcode__isnull=False,
+        deleted_at__isnull=True,
+    )
+
+    PriorAction = RentalAction.objects.filter(
+        barcode=OuterRef("barcode"),
+        timestamp__lt=OuterRef("timestamp"),
+        deleted_at__isnull=True,
+    ).order_by("-timestamp")[:1]
+
+    annotated = return_actions.annotate(
+        prior_action_type=Subquery(PriorAction.values("action")),
+        expected_group_id=Subquery(PriorAction.values("group_id")),
+    ).order_by("-timestamp")
+
+    expected_group_ids: set[int] = set()
+    results: list[dict[str, Any]] = []
+    for action in annotated:
+        if (
+            action.prior_action_type == ActionType.RENT
+            and action.expected_group_id is not None
+            and action.expected_group_id != group.pk
+        ):
+            expected_group_ids.add(action.expected_group_id)
+            results.append({
+                "barcode": action.barcode,
+                "expected_group_id": action.expected_group_id,
+                "expected_group_name": "",  # filled below
+                "timestamp": action.timestamp,
+            })
+
+    if expected_group_ids:
+        groups_map = {
+            g.pk: g.name
+            for g in Cookinggroup.objects.filter(pk__in=expected_group_ids)
+        }
+        for r in results:
+            r["expected_group_name"] = groups_map[r["expected_group_id"]]
+
+    return results
 
 
 @router.patch(

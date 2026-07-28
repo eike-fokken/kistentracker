@@ -227,3 +227,12 @@ class CrateScanOut(Schema):
     crate_was_created: bool
     warning: str | None
     quantity: int
+
+
+class UnexpectedReturnOut(Schema):
+    """A crate returned by this group that was expected to be at another group."""
+
+    barcode: str
+    expected_group_id: int
+    expected_group_name: str
+    timestamp: datetime
