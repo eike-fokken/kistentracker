@@ -68,14 +68,14 @@ export function GroupOverview({
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
   useEffect(() => {
-    if (!data || data.packstreet.is_stock) return;
+    if (!data || data.packstreet.is_stock || barcodeView) return;
     const timer = window.setTimeout(() => {
       tableBodyRef.current
         ?.querySelector<HTMLInputElement>("input[type='number']")
         ?.focus();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [data, preferRent]);
+  }, [data, preferRent, barcodeView, showConsumables]);
 
   const handleUpdated = useCallback(
     (group: GroupSummary) => {

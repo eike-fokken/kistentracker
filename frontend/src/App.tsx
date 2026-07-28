@@ -197,7 +197,7 @@ export default function App() {
       searchInputRef.current?.focus();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [route.view, selectedPackstreetId]);
+  }, [route.view, selectedPackstreetId, showConsumables, preferRent, barcodeView]);
 
   const loadPackstreets = useCallback(async () => {
     const loaded = await listPackstreets();
