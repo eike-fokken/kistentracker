@@ -105,13 +105,17 @@ router = PermissionRouter()
 # --- Helpers -------------------------------------------------------------
 
 
+def _rentable_item_type_keys() -> frozenset[str]:
+    return frozenset(
+        ItemType.objects.filter(item_class=ItemClass.RENTABLE).values_list("key", flat=True)
+    )
+
+
 def _group_summary(group: Cookinggroup) -> dict[str, Any]:
     rentals = [
         RentalItemOut(item_type=r.item_type, quantity=r.quantity)
         for r in group.rentals.order_by("item_type")
-        if ItemType.objects.filter(
-            key=r.item_type, item_class=ItemClass.RENTABLE
-        ).exists()
+        if r.item_type in _rentable_item_type_keys()
     ]
     return {
         "id": group.pk,
@@ -812,7 +816,9 @@ def delete_group(request: HttpRequest, group_id: int) -> tuple[int, None]:
 @require_permissions(IsAuthenticated)
 def group_overview(request: HttpRequest, group_id: int) -> dict[str, Any]:
     """Detailed overview of a group listing every possible item type."""
-    group = get_object_or_404(Cookinggroup, pk=group_id)
+    group = get_object_or_404(
+        Cookinggroup.objects.select_related("packstreet"), pk=group_id
+    )
     return _group_overview(group)
 
 
