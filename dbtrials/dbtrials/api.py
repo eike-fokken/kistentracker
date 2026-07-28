@@ -125,6 +125,7 @@ def _group_summary(group: Cookinggroup) -> dict[str, Any]:
             "id": group.packstreet_id,
             "name": group.packstreet.name,
             "is_stock": group.packstreet.is_stock,
+            "display_priority": group.packstreet.display_priority,
         },
         "total_items": sum(r.quantity for r in rentals),
         "rentals": rentals,
@@ -163,6 +164,7 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
             "id": group.packstreet_id,
             "name": group.packstreet.name,
             "is_stock": group.packstreet.is_stock,
+            "display_priority": group.packstreet.display_priority,
         },
         "items": items,
         "recent_actions": recent_actions,
@@ -309,6 +311,9 @@ def create_packstreet(
         raise HttpError(400, "Packstraßenname darf nicht leer sein.")
     if Packstreet.objects.filter(name=name).exists():
         raise HttpError(409, f"Eine Packstraße namens '{name}' existiert bereits.")
+    priority = payload.display_priority
+    if priority is not None:
+        return 201, Packstreet.objects.create(name=name, display_priority=priority)
     return 201, Packstreet.objects.create(name=name)
 
 
@@ -330,7 +335,11 @@ def rename_packstreet(
     if Packstreet.objects.filter(name=name).exclude(pk=packstreet_id).exists():
         raise HttpError(409, f"Eine Packstraße namens '{name}' existiert bereits.")
     packstreet.name = name
-    packstreet.save(update_fields=["name"])
+    update_fields: list[str] = ["name"]
+    if payload.display_priority is not None:
+        packstreet.display_priority = payload.display_priority
+        update_fields.append("display_priority")
+    packstreet.save(update_fields=update_fields)
     return packstreet
 
 
@@ -623,8 +632,8 @@ def download_stock_csv(request: HttpRequest) -> HttpResponse:
         Cookinggroup.objects.select_related("packstreet").prefetch_related("rentals")
     )
 
-    def sort_key(group: Cookinggroup) -> tuple[str, str, str]:
-        return (group.packstreet.name, group.internal_id, group.name)
+    def sort_key(group: Cookinggroup) -> tuple[float, str, str, str]:
+        return (group.packstreet.display_priority, group.packstreet.name, group.internal_id, group.name)
 
     groups.sort(key=sort_key)
 
@@ -711,6 +720,13 @@ def import_groups(
             name = (row.get("Gruppenname") or "").strip()
             internal_id = (row.get("Kochgruppen-ID") or "").strip()
             packstreet_name = (row.get("Packstraße") or "").strip()
+            if packstreet_name:
+                stripped = packstreet_name.strip()
+                try:
+                    float(stripped)
+                    packstreet_name = f"PS{stripped}"
+                except ValueError:
+                    pass
             if not name or not internal_id or not packstreet_name:
                 errors.append(
                     f"Zeile {line_number}: Gruppenname, Kochgruppen-ID und Packstraße "

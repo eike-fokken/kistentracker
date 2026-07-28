@@ -36,6 +36,7 @@ class PackstreetIn(Schema):
     """Input schema for creating or renaming a packstreet."""
 
     name: str
+    display_priority: float | None = None
 
 
 class PackstreetOut(Schema):
@@ -44,6 +45,7 @@ class PackstreetOut(Schema):
     id: int
     name: str
     is_stock: bool
+    display_priority: float
 
 
 class ItemTypeIn(Schema):

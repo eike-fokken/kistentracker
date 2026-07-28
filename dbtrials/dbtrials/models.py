@@ -7,6 +7,7 @@ from django.db.models import (
     BooleanField,
     CharField,
     DateTimeField,
+    FloatField,
     ForeignKey,
     IntegerField,
     Model,
@@ -116,9 +117,10 @@ class Packstreet(Model):
 
     name = CharField(max_length=100, unique=True)
     is_stock = BooleanField(default=False)
+    display_priority = FloatField(default=0.0)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["display_priority", "name"]
 
     def __str__(self) -> str:
         return self.name
