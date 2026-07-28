@@ -147,9 +147,7 @@ export function GroupHistory({ groupId, onBack }: Props) {
       {data && (
         <>
           <header className="overview__header">
-            <h2>
-              {data.name} <span className="overview__number">#{data.internal_id}</span>
-            </h2>
+            <h2>{data.internal_id}</h2>
             <p className="overview__subtitle">Ausgaben und Rücknahmen im Zeitverlauf</p>
           </header>
 
