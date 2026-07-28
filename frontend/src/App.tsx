@@ -192,14 +192,14 @@ export default function App() {
     }
   }, [overviewLoading]);
 
-  // Focus the search input when arriving at the list view.
+  // Focus the search input when arriving at the list view or switching packstreets.
   useEffect(() => {
     if (route.view !== "list") return;
     const timer = window.setTimeout(() => {
       searchInputRef.current?.focus();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [route.view]);
+  }, [route.view, selectedPackstreetId]);
 
   const loadPackstreets = useCallback(async () => {
     const loaded = await listPackstreets();
