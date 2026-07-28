@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
   deleteGroup,
+  scanCrate,
   updateGroup,
 } from "../api";
 import type {
@@ -10,8 +11,9 @@ import type {
   GroupOverview as GroupOverviewData,
   GroupSummary,
 } from "../types";
-import { OverviewItemRow } from "./OverviewItemRow";
 import { CorrectionModal } from "./CorrectionModal";
+import { OverviewHeader } from "./OverviewHeader";
+import { OverviewItemRow } from "./OverviewItemRow";
 import { describeAction, formatTimestamp } from "./utils";
 
 interface Props {
@@ -21,6 +23,7 @@ interface Props {
   packstreets: Packstreet[];
   showConsumables: boolean;
   preferRent: boolean;
+  barcodeView: boolean;
   data: GroupOverviewData | null;
   loading: boolean;
   error: string | null;
@@ -28,7 +31,6 @@ interface Props {
   onBack: () => void;
   onViewHistory: () => void;
   onViewBarcodes: () => void;
-  onToggleMode: () => void;
   onGroupChanged: (group: GroupSummary) => void;
   onDeleted: (deletedId: number) => void;
 }
@@ -40,6 +42,7 @@ export function GroupOverview({
   packstreets,
   showConsumables,
   preferRent,
+  barcodeView,
   data,
   loading,
   error,
@@ -47,7 +50,6 @@ export function GroupOverview({
   onBack,
   onViewHistory,
   onViewBarcodes,
-  onToggleMode,
   onGroupChanged,
   onDeleted,
 }: Props) {
@@ -60,6 +62,7 @@ export function GroupOverview({
   const [showCorrection, setShowCorrection] = useState(false);
 
   const [groupDeleteError, setGroupDeleteError] = useState<string | null>(null);
+
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
   useEffect(() => {
@@ -83,7 +86,7 @@ export function GroupOverview({
   async function handleDeleteGroup() {
     if (!data) return;
     const confirmed = window.confirm(
-      `Gruppe „${data.name}“ löschen? Eine Gruppe, die noch ausleihbare Artikel ausgeliehen hat, kann nicht gelöscht werden.`,
+      `Grupppe „${data.name}“ löschen? Eine Gruppe, die noch ausleihbare Artikel ausgeliehen hat, kann nicht gelöscht werden.`,
     );
     if (!confirmed) return;
     try {
@@ -146,15 +149,89 @@ export function GroupOverview({
     setShowCorrection(true);
   }
 
+  // ---- Barcode scan state ----
+
+  const [barcode, setBarcode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanWarning, setScanWarning] = useState<string | null>(null);
+  const [scanSuccess, setScanSuccess] = useState<string | null>(null);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setBarcode("");
+  }, [groupId]);
+
+  useEffect(() => {
+    if (!data || !barcodeView) return;
+    requestAnimationFrame(() => {
+      barcodeInputRef.current?.focus();
+    });
+  }, [data, preferRent, barcodeView]);
+
+  useEffect(() => {
+    if (!scanSuccess) return;
+    const timer = window.setTimeout(() => setScanSuccess(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [scanSuccess]);
+
+  async function handleScan() {
+    const value = barcode.trim();
+    if (!value || busy) return;
+
+    setBusy(true);
+    setScanError(null);
+    setScanWarning(null);
+    setScanSuccess(null);
+    setBarcode("");
+
+    try {
+      const result = await scanCrate(groupId, {
+        barcode: value,
+        action: preferRent ? "rent" : "return",
+      });
+      if (result.warning) {
+        setScanWarning(
+          `${result.warning} Bestand: ${result.quantity}`,
+        );
+      } else {
+        setScanSuccess(
+          `Kiste ${result.barcode} ${preferRent ? "ausgegeben" : "zurückgenommen"}. Bestand: ${result.quantity}`,
+        );
+      }
+      void onReload();
+    } catch (err) {
+      setScanError(
+        err instanceof ApiError ? err.message : "Scan fehlgeschlagen.",
+      );
+    } finally {
+      setBusy(false);
+      requestAnimationFrame(() => {
+        barcodeInputRef.current?.focus();
+      });
+    }
+  }
+
+  // ---- / Barcode scan state ----
+
   const labels = data
     ? Object.fromEntries(data.items.map((i) => [i.item_type, i.label]))
     : {};
 
+  const isStock = data?.packstreet?.is_stock ?? false;
+
   return (
     <section className="overview">
-      <button type="button" className="link" onClick={onBack}>
-        ← Zurück zu allen Gruppen
-      </button>
+      <OverviewHeader
+        onBack={onBack}
+        onViewHistory={onViewHistory}
+        onViewBarcodes={onViewBarcodes}
+        isStock={isStock}
+        preferRent={preferRent}
+        barcodeView={barcodeView}
+        showCorrection={showCorrection}
+        onToggleCorrection={() => showCorrection ? setShowCorrection(false) : openCorrection()}
+      />
 
       {loading && !data && <p className="empty">Ladevorgang…</p>}
       {error && <p className="banner banner--error">{error}</p>}
@@ -168,7 +245,7 @@ export function GroupOverview({
           </header>
 
           <div className="overview__actions">
-            {isAdmin && !editing && !data.packstreet.is_stock && (
+            {isAdmin && !editing && !isStock && (
               <button
                 type="button"
                 className="btn btn--ghost"
@@ -177,7 +254,7 @@ export function GroupOverview({
                 Bearbeiten
               </button>
             )}
-            {isAdmin && !data.packstreet.is_stock && (
+            {isAdmin && !isStock && (
               <button
                 type="button"
                 className="btn btn--danger"
@@ -188,31 +265,6 @@ export function GroupOverview({
             )}
             {groupDeleteError && (
               <p className="banner banner--error">{groupDeleteError}</p>
-            )}
-            {!data.packstreet.is_stock && (
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={onViewHistory}
-            >
-              Diagramme anzeigen
-            </button>
-            )}
-            {<button
-              type="button"
-              className="btn btn--ghost"
-              onClick={onViewBarcodes}
-            >
-              Barcodes anzeigen
-            </button>}
-            {!data.packstreet.is_stock && (
-            <button
-              type="button"
-              className={`btn ${showCorrection ? "btn--primary" : "btn--ghost"}`}
-              onClick={() => showCorrection ? setShowCorrection(false) : openCorrection()}
-            >
-              {showCorrection ? "Korrektur schließen" : "Korrektur"}
-            </button>
             )}
           </div>
 
@@ -274,29 +326,38 @@ export function GroupOverview({
             </div>
           )}
 
-          {!data.packstreet.is_stock && (
-          <div
-            className={`barcode-mode-banner barcode-mode-banner--${preferRent ? "rent" : "return"}`}
-            onClick={onToggleMode}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleMode(); } }}
-          >
-            <div className="barcode-mode-banner__label">
-              {preferRent ? "AUSLEIHE-MODUS" : "RÜCKGABE-MODUS"}
-            </div>
-            <div className="barcode-mode-banner__desc">
-              {preferRent
-                ? "Mengen eingeben um auszugeben"
-                : "Mengen eingeben um zurückzunehmen"}
-            </div>
-          </div>
+          {!isStock && (
+            barcodeView ? (
+              <div className="barcode-input-area">
+                <input
+                  ref={barcodeInputRef}
+                  type="text"
+                  className="barcode-input"
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleScan();
+                  }}
+                  placeholder="Barcode einscannen…"
+                  disabled={busy}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="barcode-input-area">
+                <input className="barcode-input barcode-input--spacer" disabled readOnly />
+              </div>
+            )
           )}
 
-          {!data.packstreet.is_stock && (
-          <div className="barcode-input-area">
-            <input className="barcode-input barcode-input--spacer" disabled readOnly />
-          </div>
+          {scanSuccess && (
+            <p className="banner banner--success">{scanSuccess}</p>
+          )}
+          {scanWarning && (
+            <p className="banner banner--warning">{scanWarning}</p>
+          )}
+          {scanError && (
+            <p className="banner banner--error">{scanError}</p>
           )}
 
           <div className="table-scroll">
@@ -305,7 +366,7 @@ export function GroupOverview({
               <tr>
                 <th>Artikel</th>
                 <th className="num">Ausgeliehen</th>
-                <th>{!data.packstreet.is_stock ? (preferRent ? "Ausgeben" : "Zurücknehmen") : ""}</th>
+                <th>{!isStock && !barcodeView ? (preferRent ? "Ausgeben" : "Zurücknehmen") : ""}</th>
               </tr>
             </thead>
             <tbody ref={tableBodyRef}>
@@ -318,7 +379,7 @@ export function GroupOverview({
                     item={item}
                     preferRent={preferRent}
                     onUpdated={handleUpdated}
-                    readonly={data.packstreet.is_stock}
+                    readonly={isStock || barcodeView}
                   />
                 ))}
             </tbody>

@@ -23,7 +23,6 @@ import { GroupBarcodes } from "./components/GroupBarcodes";
 import { GroupsTable } from "./components/GroupsTable";
 import { ItemTypeManager } from "./components/ItemTypeManager";
 import { LoginForm } from "./components/LoginForm";
-import { BarcodeView } from "./components/BarcodeView";
 import { SearchResults } from "./components/SearchResults";
 
 type Route =
@@ -84,7 +83,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
-  const [navigateToStock, setNavigateToStock] = useState(false);
   const [integrityResult, setIntegrityResult] =
     useState<IntegrityCheckResult | null>(null);
   const [integrityOpen, setIntegrityOpen] = useState(false);
@@ -290,18 +288,6 @@ export default function App() {
     }
   }, [route.view, route.view === "overview" ? (route as { view: "overview"; id: number }).id : null, loadOverview]);
 
-  useEffect(() => {
-    if (
-      navigateToStock &&
-      packstreetGroups.length === 1 &&
-      packstreetGroups[0].packstreet.id === selectedPackstreetId &&
-      packstreets.some((p) => p.id === selectedPackstreetId && p.is_stock)
-    ) {
-      window.location.hash = `#/group/${packstreetGroups[0].id}`;
-      setNavigateToStock(false);
-    }
-  }, [packstreetGroups, navigateToStock, selectedPackstreetId, packstreets]);
-
   // Replace a single group in local state after a rent/return/correct action.
   const handleGroupUpdated = useCallback((updated: GroupSummary) => {
     setPackstreetGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
@@ -447,7 +433,7 @@ export default function App() {
             void updateCurrentUser(undefined, undefined, undefined, next);
           }}
         >
-{barcodeView ? "Barcode-Modus" : "Zahlen-Modus"}
+          {barcodeView ? "Barcode-Modus" : "Zahlen-Modus"}
         </button>
       </div>
 
@@ -467,8 +453,13 @@ export default function App() {
               onClick={() => {
                 if (p.is_stock) {
                   setSelectedPackstreetId(p.id);
-                  setNavigateToStock(true);
                   void updateCurrentUser(undefined, undefined, p.id);
+                  void (async () => {
+                    const groups = await listGroups({ packstreetId: p.id });
+                    if (groups.length === 1) {
+                      window.location.hash = `#/group/${groups[0].id}`;
+                    }
+                  })();
                 } else {
                   window.location.hash = "";
                   setSelectedPackstreetId(p.id);
@@ -551,63 +542,33 @@ export default function App() {
           }}
         />
       ) : route.view === "overview" ? (
-        !barcodeView ? (
-          <GroupOverview
-            groupId={route.id}
-            isAdmin={isAdmin}
-            username={username}
-            packstreets={packstreets}
-            showConsumables={showConsumables}
-            preferRent={preferRent}
-            data={overviewData}
-            loading={overviewLoading}
-            error={overviewError}
-            onReload={() => { void loadOverview(route.id); } }
-            onBack={() => {
-              window.location.hash = "";
-            }}
-            onViewHistory={() => {
-              window.location.hash = `/group/${route.id}/history`;
-            }}
-            onViewBarcodes={() => {
-              window.location.hash = `/group/${route.id}/barcodes`;
-            }}
-            onToggleMode={() => {
-              const next = !preferRent;
-              setPreferRent(next);
-              void updateCurrentUser(undefined, next);
-            }}
-            onGroupChanged={handleGroupUpdated}
-            onDeleted={(deletedId) => {
-              handleGroupDeleted(deletedId);
-              window.location.hash = "";
-            }}
-          />
-        ) : (
-          <BarcodeView
-            groupId={route.id}
-            username={username}
-            preferRent={preferRent}
-            data={overviewData}
-            loading={overviewLoading}
-            error={overviewError}
-            onReload={() => { void loadOverview(route.id); } }
-            onBack={() => {
-              window.location.hash = "";
-            }}
-            onViewHistory={() => {
-              window.location.hash = `/group/${route.id}/history`;
-            }}
-            onViewBarcodes={() => {
-              window.location.hash = `/group/${route.id}/barcodes`;
-            }}
-            onToggleMode={() => {
-              const next = !preferRent;
-              setPreferRent(next);
-              void updateCurrentUser(undefined, next);
-            }}
-          />
-        )
+        <GroupOverview
+          groupId={route.id}
+          isAdmin={isAdmin}
+          username={username}
+          packstreets={packstreets}
+          showConsumables={showConsumables}
+          preferRent={preferRent}
+          barcodeView={barcodeView}
+          data={overviewData}
+          loading={overviewLoading}
+          error={overviewError}
+          onReload={() => { void loadOverview(route.id); } }
+          onBack={() => {
+            window.location.hash = "";
+          }}
+          onViewHistory={() => {
+            window.location.hash = `/group/${route.id}/history`;
+          }}
+          onViewBarcodes={() => {
+            window.location.hash = `/group/${route.id}/barcodes`;
+          }}
+          onGroupChanged={handleGroupUpdated}
+          onDeleted={(deletedId) => {
+            handleGroupDeleted(deletedId);
+            window.location.hash = "";
+          }}
+        />
       ) : (
         <>
           {isAdmin && (
