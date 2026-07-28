@@ -104,7 +104,11 @@ BACKUP_DIR="$(
 )"
 if [[ -n "$BACKUP_DIR" ]]; then
 	say "Creating backup directory $BACKUP_DIR"
-	install -d -m 0755 "$BACKUP_DIR"
+	if [[ "$MODE" == "system" ]]; then
+		sudo -u "$RUN_AS_USER" install -d -m 0755 "$BACKUP_DIR"
+	else
+		install -d -m 0755 "$BACKUP_DIR"
+	fi
 fi
 
 # --- Install fresh files -----------------------------------------------------

@@ -4,7 +4,7 @@ Description=SQLite backup of Kistentracker database ({{DATA_VOLUME}} volume, pod
 
 [Service]
 Type=oneshot
-{{USER_GROUP_LINES}}Nice=10
+{{USER_GROUP_LINES}}{{RUNTIME_ENV_LINE}}Nice=10
 IOSchedulingClass=idle
 SyslogIdentifier=%N
 
