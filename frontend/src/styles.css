@@ -1287,6 +1287,11 @@ select:focus {
   margin-bottom: 1rem;
   cursor: pointer;
   user-select: none;
+  transition: opacity 0.15s ease;
+}
+
+.barcode-mode-banner:hover {
+  opacity: 0.85;
 }
 
 .barcode-mode-banner--rent {

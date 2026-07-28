@@ -33,6 +33,7 @@ interface Props {
   onViewBarcodes: () => void;
   onGroupChanged: (group: GroupSummary) => void;
   onDeleted: (deletedId: number) => void;
+  onTogglePreferRent: () => void;
 }
 
 export function GroupOverview({
@@ -52,6 +53,7 @@ export function GroupOverview({
   onViewBarcodes,
   onGroupChanged,
   onDeleted,
+  onTogglePreferRent,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -231,6 +233,7 @@ export function GroupOverview({
         barcodeView={barcodeView}
         showCorrection={showCorrection}
         onToggleCorrection={() => showCorrection ? setShowCorrection(false) : openCorrection()}
+        onTogglePreferRent={onTogglePreferRent}
       />
 
       {loading && !data && <p className="empty">Ladevorgang…</p>}

@@ -564,6 +564,11 @@ export default function App() {
             window.location.hash = `/group/${route.id}/barcodes`;
           }}
           onGroupChanged={handleGroupUpdated}
+          onTogglePreferRent={() => {
+            const next = !preferRent;
+            setPreferRent(next);
+            void updateCurrentUser(undefined, next);
+          }}
           onDeleted={(deletedId) => {
             handleGroupDeleted(deletedId);
             window.location.hash = "";

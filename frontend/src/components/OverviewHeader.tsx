@@ -7,6 +7,7 @@ interface Props {
   barcodeView: boolean;
   showCorrection: boolean;
   onToggleCorrection: () => void;
+  onTogglePreferRent: () => void;
 }
 
 export function OverviewHeader({
@@ -18,6 +19,7 @@ export function OverviewHeader({
   barcodeView,
   showCorrection,
   onToggleCorrection,
+  onTogglePreferRent,
 }: Props) {
   return (
     <div className="overview-header">
@@ -54,6 +56,7 @@ export function OverviewHeader({
       {!isStock && (
         <div
           className={`barcode-mode-banner barcode-mode-banner--${preferRent ? "rent" : "return"}`}
+          onClick={onTogglePreferRent}
         >
           <div className="barcode-mode-banner__label">
             {preferRent ? "AUSLEIHE-MODUS" : "RÜCKGABE-MODUS"}
