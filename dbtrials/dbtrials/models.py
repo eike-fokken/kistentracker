@@ -65,7 +65,7 @@ class User(AbstractUser):
     )
 
     barcode_view = BooleanField(
-        default=False,
+        default=True,
     )
 
     objects = UserManager()  # type: ignore[misc]
