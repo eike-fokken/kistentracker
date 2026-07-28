@@ -68,6 +68,7 @@ export default function App() {
   );
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [graiWarning, setGraiWarning] = useState(false);
   const lastActivityRef = useRef(Date.now());
 
   const [packstreetGroups, setPackstreetGroups] = useState<GroupSummary[]>([]);
@@ -494,12 +495,27 @@ export default function App() {
           value={search}
           placeholder="Gruppenname oder -ID suchen…"
           onChange={(e) => {
-            setSearch(e.target.value);
+            const val = e.target.value;
+            if (val.trim().startsWith("80030")) {
+              setGraiWarning(true);
+              setSearch("");
+              setTimeout(() => searchInputRef.current?.focus(), 0);
+              return;
+            }
+            setGraiWarning(false);
+            setSearch(val);
           }}
           ref={searchInputRef}
           aria-label="Gruppen durchsuchen"
         />
       </form>
+
+      {graiWarning && (
+        <p className="banner banner--warning">
+          Das sieht nach einer GRAI-Nummer aus. Bitte gib einen Gruppennamen oder
+          die interne Gruppen-ID ein.
+        </p>
+      )}
 
       {route.view === "search" ? (
         <SearchResults
