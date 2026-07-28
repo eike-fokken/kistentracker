@@ -32,6 +32,7 @@ export interface Packstreet {
   id: number;
   name: string;
   is_stock: boolean;
+  display_priority: number;
 }
 
 /** A cooking group summary (matches `GroupSummaryOut`). */

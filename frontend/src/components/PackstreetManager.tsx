@@ -12,10 +12,12 @@ export function PackstreetManager({ packstreets, onChanged }: Props) {
   const visiblePackstreets = packstreets.filter((p) => !p.is_stock);
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newPriority, setNewPriority] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [editPriority, setEditPriority] = useState("");
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -39,15 +41,18 @@ export function PackstreetManager({ packstreets, onChanged }: Props) {
       setError("Bitte gib einen Packstraßennamen ein.");
       return;
     }
-    const ok = await run(() => createPackstreet(name));
+    const priority = newPriority.trim() ? parseFloat(newPriority.trim()) : undefined;
+    const ok = await run(() => createPackstreet(name, priority));
     if (ok) {
       setNewName("");
+      setNewPriority("");
     }
   }
 
   function startEdit(p: Packstreet) {
     setEditingId(p.id);
     setEditName(p.name);
+    setEditPriority(String(p.display_priority));
     setError(null);
   }
 
@@ -57,7 +62,8 @@ export function PackstreetManager({ packstreets, onChanged }: Props) {
       setError("Bitte gib einen Packstraßennamen ein.");
       return;
     }
-    const ok = await run(() => renamePackstreet(id, name));
+    const priority = editPriority.trim() ? parseFloat(editPriority.trim()) : undefined;
+    const ok = await run(() => renamePackstreet(id, name, priority));
     if (ok) {
       setEditingId(null);
     }
@@ -98,6 +104,16 @@ export function PackstreetManager({ packstreets, onChanged }: Props) {
               disabled={busy}
               aria-label="Neuer Packstraßenname"
             />
+            <input
+              type="number"
+              value={newPriority}
+              placeholder="Priorität"
+              onChange={(e) => setNewPriority(e.target.value)}
+              disabled={busy}
+              aria-label="Anzeigepriorität"
+              step="any"
+              className="packstreets__priority-input"
+            />
             <button type="submit" className="btn btn--primary" disabled={busy}>
               Hinzufügen
             </button>
@@ -117,6 +133,15 @@ export function PackstreetManager({ packstreets, onChanged }: Props) {
                         onChange={(e) => setEditName(e.target.value)}
                         disabled={busy}
                         aria-label={`${p.name} umbenennen`}
+                      />
+                      <input
+                        type="number"
+                        value={editPriority}
+                        onChange={(e) => setEditPriority(e.target.value)}
+                        disabled={busy}
+                        aria-label={`${p.name} Priorität`}
+                        step="any"
+                        className="packstreets__priority-input"
                       />
                       <div className="packstreets__actions">
                         <button
@@ -139,7 +164,9 @@ export function PackstreetManager({ packstreets, onChanged }: Props) {
                     </>
                   ) : (
                     <>
-                      <span className="packstreets__name">{p.name}</span>
+                      <span className="packstreets__name">
+                        {p.name} <span className="packstreets__priority-label">(Prio {p.display_priority})</span>
+                      </span>
                       <div className="packstreets__actions">
                         <button
                           type="button"

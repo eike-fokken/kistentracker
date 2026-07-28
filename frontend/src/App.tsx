@@ -200,6 +200,8 @@ export default function App() {
     const sorted = [...loaded].sort((a, b) => {
       if (a.is_stock) return 1;
       if (b.is_stock) return -1;
+      const prio = a.display_priority - b.display_priority;
+      if (prio !== 0) return prio;
       return a.name.localeCompare(b.name);
     });
     setPackstreets(sorted);

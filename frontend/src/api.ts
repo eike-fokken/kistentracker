@@ -173,17 +173,25 @@ export function listPackstreets(): Promise<Packstreet[]> {
   return request<Packstreet[]>("/packstreets");
 }
 
-export function createPackstreet(name: string): Promise<Packstreet> {
+export function createPackstreet(name: string, displayPriority?: number): Promise<Packstreet> {
+  const body: Record<string, unknown> = { name };
+  if (displayPriority !== undefined) {
+    body.display_priority = displayPriority;
+  }
   return request<Packstreet>("/packstreets", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
 }
 
-export function renamePackstreet(id: number, name: string): Promise<Packstreet> {
+export function renamePackstreet(id: number, name: string, displayPriority?: number): Promise<Packstreet> {
+  const body: Record<string, unknown> = { name };
+  if (displayPriority !== undefined) {
+    body.display_priority = displayPriority;
+  }
   return request<Packstreet>(`/packstreets/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
 }
 
