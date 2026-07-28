@@ -59,7 +59,7 @@ if [[ "$MODE" == "system" ]]; then
 	SYSTEMCTL="systemctl"
 	CADDYFILE_BASE_DIR="/etc/caddy"
 	RUN_AS_HOME="$(sudo -u "$RUN_AS_USER" sh -c 'echo "$HOME"')"
-	SYSTEMCTL_USER_CMD=(sudo -u "$RUN_AS_USER" systemctl --user)
+	SYSTEMCTL_USER_CMD=(systemctl --machine="$RUN_AS_USER"@.host --user)
 	BACKEND_UNIT_DIR="$RUN_AS_HOME/.config/systemd/user"
 else
 	UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
@@ -119,10 +119,15 @@ $SYSTEMCTL daemon-reload
 $SYSTEMCTL enable --now "$SOCKET_UNIT"
 
 say "Installing backend service"
-mkdir -p "$BACKEND_UNIT_DIR"
-cp "$GEN_DIR/$BACKEND_SERVICE_UNIT" "$BACKEND_UNIT_DIR/"
-systemctl_user daemon-reload
-systemctl_user enable --now "$BACKEND_SERVICE_UNIT"
+	if [[ "$MODE" == "system" ]]; then
+		sudo -u "$RUN_AS_USER" mkdir -p "$BACKEND_UNIT_DIR"
+		sudo -u "$RUN_AS_USER" install -m 0644 "$GEN_DIR/$BACKEND_SERVICE_UNIT" "$BACKEND_UNIT_DIR/"
+	else
+		mkdir -p "$BACKEND_UNIT_DIR"
+		install -m 0644 "$GEN_DIR/$BACKEND_SERVICE_UNIT" "$BACKEND_UNIT_DIR/"
+	fi
+	systemctl_user daemon-reload
+	systemctl_user enable --now "$BACKEND_SERVICE_UNIT"
 
 say "Installing backup timer"
 install -m 0644 "$GEN_DIR/$BACKUP_SERVICE_UNIT" "$UNIT_DIR/"
