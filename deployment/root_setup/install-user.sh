@@ -19,6 +19,7 @@ set -euo pipefail
 
 UNIT_NAME="${UNIT_NAME:-caddy}"
 BACKUP_UNIT_NAME="${BACKUP_UNIT_NAME:-backup-db}"
+BACKEND_UNIT_NAME="${BACKEND_UNIT_NAME:-backend}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 GEN_DIR="$SCRIPT_DIR/generated"
 
@@ -38,11 +39,25 @@ SOCKET_UNIT="$UNIT_NAME.socket"
 SERVICE_UNIT="$UNIT_NAME.service"
 BACKUP_SERVICE_UNIT="$BACKUP_UNIT_NAME.service"
 BACKUP_TIMER_UNIT="$BACKUP_UNIT_NAME.timer"
+BACKEND_SERVICE_UNIT="$BACKEND_UNIT_NAME.service"
 
 say() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 
+# --- Detect --run-as user (from User= in the generated caddy.service) ------
+RUN_AS_USER=""
+if $SYSTEM_UNIT && [[ -f "$GEN_DIR/$SERVICE_UNIT" ]]; then
+	RUN_AS_USER="$(grep -oP '^User=\K.*' "$GEN_DIR/$SERVICE_UNIT" 2>/dev/null || echo "")"
+fi
+
 # --- Preconditions --------------------------------------------------------
-for f in "$SOCKET_UNIT" "$SERVICE_UNIT" "Caddyfile.socket" "$BACKUP_SERVICE_UNIT" "$BACKUP_TIMER_UNIT"; do
+MUST_EXIST=("$SOCKET_UNIT" "$SERVICE_UNIT" "Caddyfile.socket" "$BACKUP_SERVICE_UNIT" "$BACKUP_TIMER_UNIT")
+# The backend unit is only required when it would actually be installed
+# (user mode, or system mode with --run-as). In system root-only mode it's
+# silently skipped.
+if ! $SYSTEM_UNIT || [[ -n "$RUN_AS_USER" ]]; then
+	MUST_EXIST+=("$BACKEND_SERVICE_UNIT")
+fi
+for f in "${MUST_EXIST[@]}"; do
 	if [[ ! -f "$GEN_DIR/$f" ]]; then
 		echo "error: $GEN_DIR/$f not found. Generate it first, e.g.:" >&2
 		echo "  ./generate.py --user --http-port 8080 --https-port 8443 --backend-port 8180 --backup-dir /some/path" >&2
@@ -60,6 +75,18 @@ say "Tearing down any previous installation"
 # Stop + disable (removes *.wants symlinks). Ignore errors if not present.
 $SYSTEMCTL disable --now "$SOCKET_UNIT" "$SERVICE_UNIT" 2>/dev/null || true
 $SYSTEMCTL disable --now "$BACKUP_TIMER_UNIT" "$BACKUP_SERVICE_UNIT" 2>/dev/null || true
+# Teardown backend unit: user-manager in --run-as mode, system/user as-is otherwise.
+if [[ -n "$RUN_AS_USER" ]]; then
+	sudo -u "$RUN_AS_USER" systemctl --user disable --now "$BACKEND_SERVICE_UNIT" 2>/dev/null || true
+	sudo -u "$RUN_AS_USER" systemctl --user stop "$BACKEND_SERVICE_UNIT" 2>/dev/null || true
+	RUN_AS_HOME="$(sudo -u "$RUN_AS_USER" sh -c 'echo "$HOME"')"
+	sudo rm -f "$RUN_AS_HOME/.config/systemd/user/$BACKEND_SERVICE_UNIT"
+	sudo -u "$RUN_AS_USER" systemctl --user daemon-reload
+else
+	$SYSTEMCTL disable --now "$BACKEND_SERVICE_UNIT" 2>/dev/null || true
+	$SYSTEMCTL stop "$BACKEND_SERVICE_UNIT" 2>/dev/null || true
+	rm -f "$UNIT_DIR/$BACKEND_SERVICE_UNIT"
+fi
 $SYSTEMCTL stop "$SERVICE_UNIT" "$SOCKET_UNIT" 2>/dev/null || true
 $SYSTEMCTL stop "$BACKUP_SERVICE_UNIT" "$BACKUP_TIMER_UNIT" 2>/dev/null || true
 # Force-remove a leftover container so the fresh service can recreate it.
@@ -94,6 +121,20 @@ $SYSTEMCTL daemon-reload
 say "Enabling and starting $SOCKET_UNIT"
 $SYSTEMCTL enable --now "$SOCKET_UNIT"
 
+# --- Install backend service ------------------------------------------------
+say "Installing backend service"
+if [[ -n "$RUN_AS_USER" ]]; then
+	RUN_AS_HOME="$(sudo -u "$RUN_AS_USER" sh -c 'echo "$HOME"')"
+	sudo -u "$RUN_AS_USER" mkdir -p "$RUN_AS_HOME/.config/systemd/user"
+	sudo install -m 0644 "$GEN_DIR/$BACKEND_SERVICE_UNIT" "$RUN_AS_HOME/.config/systemd/user/"
+	sudo -u "$RUN_AS_USER" systemctl --user daemon-reload
+	sudo -u "$RUN_AS_USER" systemctl --user enable --now "$BACKEND_SERVICE_UNIT"
+else
+	install -m 0644 "$GEN_DIR/$BACKEND_SERVICE_UNIT" "$UNIT_DIR/"
+	$SYSTEMCTL daemon-reload
+	$SYSTEMCTL enable --now "$BACKEND_SERVICE_UNIT"
+fi
+
 # --- Install backup timer --------------------------------------------------
 say "Installing backup timer"
 install -m 0644 "$GEN_DIR/$BACKUP_SERVICE_UNIT" "$UNIT_DIR/"
@@ -105,20 +146,36 @@ $SYSTEMCTL enable --now "$BACKUP_TIMER_UNIT"
 say "Done. Current status:"
 $SYSTEMCTL --no-pager status "$SOCKET_UNIT" || true
 echo
-if $SYSTEM_UNIT; then
+if [[ -n "$RUN_AS_USER" ]]; then
+	sudo -u "$RUN_AS_USER" systemctl --user --no-pager status "$BACKEND_SERVICE_UNIT" 2>/dev/null || true
+elif $SYSTEM_UNIT; then
+	$SYSTEMCTL --no-pager status "$BACKEND_SERVICE_UNIT" 2>/dev/null || true
+else
+	$SYSTEMCTL --no-pager status "$BACKEND_SERVICE_UNIT" 2>/dev/null || true
+fi
+echo
+if $SYSTEM_UNIT && [[ -z "$RUN_AS_USER" ]]; then
 	echo "Note: $SERVICE_UNIT stays inactive until the first connection (socket"
-	echo "activation). Make sure the backend + frontend build are up:"
-	echo "  (cd \"$SCRIPT_DIR/..\" && podman-compose up -d backend frontend-build)"
+	echo "activation). The backend unit starts independently on boot."
+elif $SYSTEM_UNIT; then
+	echo "Note: $SERVICE_UNIT stays inactive until the first connection (socket"
+	echo "activation). The backend unit runs in $RUN_AS_USER's user manager."
 else
 	echo "Note: $SERVICE_UNIT stays inactive until the first connection (socket"
-	echo "activation). Make sure the backend + frontend build are up:"
-	echo "  (cd \"$SCRIPT_DIR/..\" && podman-compose up -d backend frontend-build)"
+	echo "activation). The backend unit starts independently on boot."
 	echo "To start at boot without an active login: loginctl enable-linger \"\$USER\""
 fi
 echo
 $SYSTEMCTL --no-pager status "$BACKUP_TIMER_UNIT" 2>/dev/null || true
 echo
-echo "Backup timer: fires daily (with a random delay), writing to $BACKUP_DIR."
+echo "Backup timer: fires hourly (with a random delay), writing to $BACKUP_DIR."
 echo "  To run a backup now:  $SYSTEMCTL start $BACKUP_SERVICE_UNIT"
 echo "  To view logs:         journalctl ${SYSTEM_UNIT:+ -u $BACKUP_SERVICE_UNIT}"
 echo "  To list next run:     $SYSTEMCTL list-timers $BACKUP_TIMER_UNIT"
+if [[ -n "$RUN_AS_USER" ]]; then
+	echo "  To view backend logs: sudo -u $RUN_AS_USER journalctl --user -u $BACKEND_SERVICE_UNIT"
+elif $SYSTEM_UNIT; then
+	echo "  To view backend logs: journalctl -u $BACKEND_SERVICE_UNIT"
+else
+	echo "  To view backend logs: journalctl --user -u $BACKEND_SERVICE_UNIT"
+fi

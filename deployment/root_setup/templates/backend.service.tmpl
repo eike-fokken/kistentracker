@@ -1,0 +1,24 @@
+[Unit]
+Description=Kistentracker backend container (podman-compose)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
+
+ExecStart={{PODMAN_COMPOSE}} \
+    -f {{COMPOSE_FILE}} \
+    --env-file {{ENV_FILE}} \
+    up -d backend{{FRONTEND_BUILD_SERVICE}}
+
+ExecStop={{PODMAN_COMPOSE}} \
+    -f {{COMPOSE_FILE}} \
+    --env-file {{ENV_FILE}} \
+    stop
+
+[Install]
+WantedBy=default.target

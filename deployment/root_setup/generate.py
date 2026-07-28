@@ -9,6 +9,10 @@ This renders, from the templates in ``templates/``:
   are forwarded into the container (fd/3 = HTTP, fd/4 = HTTPS).
 * ``Caddyfile.socket`` -- a Caddy config that binds those file descriptors
   instead of opening its own ports.
+* ``backend.service`` -- a oneshot unit that runs ``podman-compose up -d`` for
+  the backend (and optionally frontend-build) containers.
+* ``backup-db.service`` / ``backup-db.timer`` -- a oneshot unit + timer for
+  SQLite database backups.
 
 The script only writes files; it never invokes Podman or systemd (installing the
 units requires root). Run it as your normal user, then follow the printed
@@ -37,6 +41,7 @@ TEMPLATES = {
     "caddy.socket.tmpl": "caddy.socket",
     "caddy.service.tmpl": "caddy.service",
     "Caddyfile.socket.tmpl": "Caddyfile.socket",
+    "backend.service.tmpl": "backend.service",
     "backup-db.service.tmpl": "backup-db.service",
     "backup-db.timer.tmpl": "backup-db.timer",
 }
@@ -150,6 +155,33 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="The backup unit will order itself After= this container to avoid "
         "racing a podman-compose up on boot. Set to empty to skip.",
     )
+
+    # Backend service (podman-compose) options.
+    parser.add_argument(
+        "--compose-file",
+        type=Path,
+        default=None,
+        help="Absolute path to compose.yml (defaults to <SCRIPT_DIR>/../compose.yml).",
+    )
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        default=None,
+        help="Absolute path to the .env file for podman-compose (defaults to "
+        "<SCRIPT_DIR>/../.env).",
+    )
+    parser.add_argument(
+        "--podman-compose",
+        default="podman-compose",
+        help="Absolute path to the podman-compose binary used in the backend "
+        "service unit.",
+    )
+    parser.add_argument(
+        "--no-frontend-build",
+        action="store_true",
+        help="Do not also start the frontend-build compose service in the "
+        "backend unit (by default both are started).",
+    )
     return parser.parse_args(argv)
 
 
@@ -213,6 +245,13 @@ def build_context(args: argparse.Namespace) -> dict[str, str]:
         else ""
     )
 
+    # Backend service (podman-compose): resolve compose file and env file paths.
+    compose_file = args.compose_file or (SCRIPT_DIR / ".." / "compose.yml")
+    compose_file = compose_file.resolve()
+    env_file = args.env_file or (SCRIPT_DIR / ".." / ".env")
+    env_file = env_file.resolve()
+    frontend_build_service = "" if args.no_frontend_build else " frontend-build"
+
     return {
         "CONTAINER_NAME": args.container_name,
         "IMAGE": args.image,
@@ -240,6 +279,10 @@ def build_context(args: argparse.Namespace) -> dict[str, str]:
         "RETENTION_DAYS": str(args.retention_days),
         "RANDOMIZED_DELAY_SEC": str(args.backup_randomized_delay_sec),
         "AFTER_BACKEND_LINE": after_backend_line,
+        "COMPOSE_FILE": str(compose_file),
+        "ENV_FILE": str(env_file),
+        "PODMAN_COMPOSE": args.podman_compose,
+        "FRONTEND_BUILD_SERVICE": frontend_build_service,
     }
 
 
@@ -351,8 +394,10 @@ def _print_instructions(
         print(f"  mkdir -p {unit_dir}")
         print(f"  install -m 0644 {output_dir / (unit + '.socket')} {unit_dir}/")
         print(f"  install -m 0644 {output_dir / (unit + '.service')} {unit_dir}/")
+        print(f"  install -m 0644 {output_dir / 'backend.service'} {unit_dir}/")
         print("  systemctl --user daemon-reload")
         print(f"  systemctl --user enable --now {unit}.socket")
+        print(f"  systemctl --user enable --now backend.service")
         print("  # start at boot without an active login session:")
         print('  loginctl enable-linger "$USER"')
     elif run_as:
@@ -372,7 +417,7 @@ def _print_instructions(
             f"    sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 {run_as}"
         )
         print()
-        print("Install the files (root):")
+        print("Install the Caddy units (root):")
         print(
             f"  sudo install -D -m 0644 {output_dir / 'Caddyfile.socket'} {caddyfile}"
         )
@@ -385,12 +430,20 @@ def _print_instructions(
         print("  sudo systemctl daemon-reload")
         print(f"  sudo systemctl enable --now {unit}.socket")
         print()
-        print(f"The stack must run in {run_as}'s ROOTLESS podman so it owns the")
-        print("network/volumes the service references. Run compose as that user, e.g.:")
-        print(f"  sudo machinectl shell {run_as}@ /bin/sh -c \\")
+        print(f"Install the backend unit as a user unit for '{run_as}':")
         print(
-            "    'cd <path>/deployment && podman-compose up -d backend frontend-build'"
+            f"  sudo -u {run_as} mkdir -p ~{run_as}/.config/systemd/user"
         )
+        print(
+            f"  sudo -u {run_as} install -m 0644 {output_dir / 'backend.service'} ~{run_as}/.config/systemd/user/"
+        )
+        print(f"  sudo -u {run_as} systemctl --user daemon-reload")
+        print(f"  sudo -u {run_as} systemctl --user enable --now backend.service")
+        print()
+        print(f"The backend unit runs podman-compose as '{run_as}' so it owns the")
+        print("network/volumes. The compose file and .env must be in place:")
+        print(f"  compose: {context['COMPOSE_FILE']}")
+        print(f"  env:     {context['ENV_FILE']}")
         print()
         print("Note: the units reference the network/volume names from that user's")
         print(
@@ -415,11 +468,6 @@ def _print_instructions(
         print("  # 3. Reload and enable (the socket triggers the service):")
         print("  systemctl daemon-reload")
         print(f"  systemctl enable --now {unit}.socket")
-
-    print()
-    print("Bring up the backend + frontend build with podman-compose first, e.g.:")
-    print("  podman-compose up -d backend frontend-build")
-    print("(Do not also run the compose 'caddy' service; this unit replaces it.)")
 
     # Backup units.
     print()

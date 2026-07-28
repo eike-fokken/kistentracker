@@ -17,8 +17,9 @@ root.
 | File               | Purpose                                                                   |
 | ------------------ | ------------------------------------------------------------------------- |
 | `caddy.socket`     | One socket unit, two `ListenStream`s (HTTP then HTTPS).                    |
-| `caddy.service`    | Podman unit running Caddy; inherits the activated sockets.                |
+| `caddy.service`    | Podman unit running Caddy; inherits the activated sockets.                 |
 | `Caddyfile.socket` | Caddy config that binds `fd/3` (HTTP) and `fd/4` (HTTPS).                  |
+| `backend.service`  | Oneshot unit that runs `podman-compose up -d backend` (and optionally `frontend-build`). |
 
 The order of the two `ListenStream` lines is what maps them to descriptors:
 first → `fd/3`, second → `fd/4`. The Caddyfile relies on exactly that order.
@@ -93,7 +94,8 @@ You have three ways to serve on 80/443; they trade off privilege vs. simplicity:
   --http-port 80 --https-port 443 --backend-port 8000 \
   --site-address app.example.com --acme-email you@example.com \
   --network app_dbtrials --frontend-volume app_frontend \
-  --caddy-data-volume app_caddy_data --caddy-config-volume app_caddy_config
+  --caddy-data-volume app_caddy_data --caddy-config-volume app_caddy_config \
+  --backup-dir $HOME/kistentracker_backups
 ```
 
 This produces **system** units where the `.socket` is root-owned (binds 80/443)
@@ -103,13 +105,30 @@ rootless podman also needs that runtime dir and the user's lingering manager,
 which these units and the printed steps set up. The `<uid>` is looked up from
 `/etc/passwd`; pass `--run-as-uid` if generating on a different host.
 
-Because the service uses `appuser`'s **rootless** podman, the backend + frontend
-stack must also run as `appuser` so it owns the referenced network/volumes:
+The generated `backend.service` unit uses `podman-compose` (also as `appuser`) to
+start the backend and frontend-build containers automatically at boot. The
+compose file and `.env` must be in place; the default paths (`../compose.yml` and
+`../.env` relative to this script) can be overridden with `--compose-file` and
+`--env-file`.
+
+Prerequisites (once):
 
 ```bash
 sudo loginctl enable-linger appuser
-sudo machinectl shell appuser@ /bin/sh -c \
-  'cd /path/to/app/deployment && podman-compose up -d backend frontend-build'
+# appuser needs subuid/subgid ranges for rootless podman (usually preset):
+grep -q '^appuser:' /etc/subuid /etc/subgid || \
+  sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 appuser
+```
+
+Then install the generated files as root (or use `install-user.sh`):
+
+```bash
+sudo install -D -m 0644 generated/Caddyfile.socket /etc/caddy/caddy.Caddyfile
+sudo install -m 0644 generated/caddy.socket  /etc/systemd/system/
+sudo install -m 0644 generated/caddy.service /etc/systemd/system/
+sudo install -m 0644 generated/backend.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now caddy.socket backend.service
 ```
 
 ## Install (system manager, as root)
@@ -124,18 +143,15 @@ sudo install -D -m 0644 generated/Caddyfile.socket /etc/caddy/caddy.Caddyfile
 # Install the units:
 sudo install -m 0644 generated/caddy.socket  /etc/systemd/system/
 sudo install -m 0644 generated/caddy.service /etc/systemd/system/
+sudo install -m 0644 generated/backend.service /etc/systemd/system/
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now caddy.socket
+sudo systemctl enable --now caddy.socket backend.service
 ```
 
-Bring up the rest of the stack (without the compose `caddy` service, which this
-replaces):
-
-```bash
-cd ..
-podman-compose up -d backend frontend-build
-```
+The backend unit runs `podman-compose up -d backend` (and `frontend-build`) at
+boot, so the stack comes up automatically. You no longer need to manually run
+compose.
 
 ## Notes
 
