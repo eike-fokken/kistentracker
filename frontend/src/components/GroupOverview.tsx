@@ -6,6 +6,7 @@ import {
   scanCrate,
   updateGroup,
 } from "../api";
+import { playErrorBeep } from "../sounds";
 import type {
   Packstreet,
   GroupOverview as GroupOverviewData,
@@ -206,6 +207,7 @@ export function GroupOverview({
       setScanError(
         err instanceof ApiError ? err.message : "Scan fehlgeschlagen.",
       );
+      playErrorBeep();
     } finally {
       setBusy(false);
       requestAnimationFrame(() => {

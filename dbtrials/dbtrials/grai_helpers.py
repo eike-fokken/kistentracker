@@ -28,7 +28,7 @@ def validate_grai(barcode: str) -> None:
         )
 
     if not barcode.startswith("80030"):
-        raise ValueError("The barcode does not start with 80030.")
+        raise ValueError(f">>{barcode}<< beginnt nicht mit 80030.")
 
     asset_identifier = barcode[5:18]
     serial = barcode[18:]
