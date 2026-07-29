@@ -179,7 +179,7 @@ export function GroupOverview({
   }, [scanSuccess]);
 
   async function handleScan() {
-    const value = barcode.trim();
+    const value = barcode.trim().replace(/[()]/g, "");
     if (!value || busy) return;
 
     setBusy(true);
