@@ -173,6 +173,17 @@ export function GroupOverview({
   }, [data, preferRent, barcodeView]);
 
   useEffect(() => {
+    if (scanError) {
+      document.body.classList.add("body--error");
+      return () => document.body.classList.remove("body--error");
+    }
+    if (scanWarning) {
+      document.body.classList.add("body--warning");
+      return () => document.body.classList.remove("body--warning");
+    }
+  }, [scanError, scanWarning]);
+
+  useEffect(() => {
     if (!scanSuccess) return;
     const timer = window.setTimeout(() => setScanSuccess(null), 3000);
     return () => window.clearTimeout(timer);
@@ -359,10 +370,28 @@ export function GroupOverview({
             <p className="banner banner--success">{scanSuccess}</p>
           )}
           {scanWarning && (
-            <p className="banner banner--warning">{scanWarning}</p>
+            <div className="banner banner--warning">
+              <span>{scanWarning}</span>
+              <button
+                type="button"
+                className="btn btn--ghost banner__dismiss"
+                onClick={() => { setScanWarning(null); setScanError(null); }}
+              >
+                Ausblenden
+              </button>
+            </div>
           )}
           {scanError && (
-            <p className="banner banner--error">{scanError}</p>
+            <div className="banner banner--error">
+              <span>{scanError}</span>
+              <button
+                type="button"
+                className="btn btn--ghost banner__dismiss"
+                onClick={() => { setScanWarning(null); setScanError(null); }}
+              >
+                Ausblenden
+              </button>
+            </div>
           )}
 
           <div className="table-scroll">

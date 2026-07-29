@@ -34,6 +34,14 @@ body {
   line-height: 1.5;
 }
 
+body.body--error {
+  background: #fecaca;
+}
+
+body.body--warning {
+  background: #fde68a;
+}
+
 .app {
   width: clamp(20rem, 90%, 80rem);
   margin: 0 auto;
@@ -479,13 +487,34 @@ select:focus {
 }
 
 .banner--error {
-  background: var(--danger-bg);
+  background: #fecaca;
   color: var(--danger);
+  font-size: 2rem;
+  font-weight: 600;
+  text-align: center;
+  border: 4px solid #000;
 }
 
 .banner--warning {
-  background: #fef9c3;
+  background: #fde68a;
   color: #92400e;
+  font-size: 2rem;
+  font-weight: 600;
+  text-align: center;
+  border: 4px solid #b45309;
+}
+
+.banner--error,
+.banner--warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.banner__dismiss {
+  font-size: 0.9rem;
+  font-weight: 400;
 }
 
 .banner--success {
