@@ -22,6 +22,7 @@ from ninja_extra import NinjaExtraAPI
 from ninja_jwt.authentication import JWTAuth
 from ninja_jwt.controller import NinjaJWTDefaultController
 
+from dbtrials.grai_helpers import validate_grai
 from dbtrials.models import (
     ActionType,
     Cookinggroup,
@@ -33,7 +34,6 @@ from dbtrials.models import (
     Rental,
     RentalAction,
 )
-from dbtrials.grai_helpers import validate_grai
 from dbtrials.permissions import (
     AllowAny,
     IsAdmin,
@@ -106,7 +106,9 @@ router = PermissionRouter()
 
 def _rentable_item_type_keys() -> frozenset[str]:
     return frozenset(
-        ItemType.objects.filter(item_class=ItemClass.RENTABLE).values_list("key", flat=True)
+        ItemType.objects.filter(item_class=ItemClass.RENTABLE).values_list(
+            "key", flat=True
+        )
     )
 
 
@@ -153,7 +155,9 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
             "timestamp": action.timestamp,
             "deleted_at": action.deleted_at,
         }
-        for action in group.actions.filter(deleted_at__isnull=True).select_related("user")[:10]
+        for action in group.actions.filter(deleted_at__isnull=True).select_related(
+            "user"
+        )[:10]
     ]
     return {
         "id": group.pk,
@@ -479,7 +483,9 @@ def create_group(
         )
     packstreet = get_object_or_404(Packstreet, pk=payload.packstreet_id)
     if packstreet.is_stock:
-        raise HttpError(400, "In der Lager-Packstraße können keine Gruppen erstellt werden.")
+        raise HttpError(
+            400, "In der Lager-Packstraße können keine Gruppen erstellt werden."
+        )
     try:
         group = Cookinggroup.objects.create(
             name=name, internal_id=internal_id, packstreet=packstreet
@@ -558,7 +564,9 @@ def group_history(
             if end_date is not None
             else datetime(2099, 12, 31, tzinfo=timezone.get_current_timezone())
         )
-        pre_actions = group.actions.filter(deleted_at__isnull=True, timestamp__lt=start).order_by("timestamp")
+        pre_actions = group.actions.filter(
+            deleted_at__isnull=True, timestamp__lt=start
+        ).order_by("timestamp")
         for action in pre_actions:
             item_type = action.item_type
             if item_type not in running:
@@ -585,9 +593,7 @@ def group_history(
             start_date, datetime.min.time(), tzinfo=timezone.get_current_timezone()
         )
         for it in item_types:
-            points[it.key].append(
-                {"timestamp": start_dt, "quantity": running[it.key]}
-            )
+            points[it.key].append({"timestamp": start_dt, "quantity": running[it.key]})
 
     for action in actions:
         item_type = action.item_type
@@ -632,7 +638,12 @@ def download_stock_csv(request: HttpRequest) -> HttpResponse:
     )
 
     def sort_key(group: Cookinggroup) -> tuple[float, str, str, str]:
-        return (group.packstreet.display_priority, group.packstreet.name, group.internal_id, group.name)
+        return (
+            group.packstreet.display_priority,
+            group.packstreet.name,
+            group.internal_id,
+            group.name,
+        )
 
     groups.sort(key=sort_key)
 
@@ -654,6 +665,7 @@ def download_stock_csv(request: HttpRequest) -> HttpResponse:
 
 _CSV_HEADER = ("Gruppenname", "Kochgruppen-ID", "Packstraße")
 
+
 class InvalidImportHeadersError(Exception):
     pass
 
@@ -665,7 +677,6 @@ def _require_header(required: tuple[str, ...], fieldnames: list[str]) -> None:
     missing = req - have
     if missing:
         raise InvalidImportHeadersError(", ".join(sorted(missing)))
-
 
 
 @router.post(
@@ -741,7 +752,9 @@ def import_groups(
                 "packstreet": packstreet.name,
             }
             existing_by_name = Cookinggroup.objects.filter(name=name).first()
-            existing_by_id = Cookinggroup.objects.filter(internal_id=internal_id).first()
+            existing_by_id = Cookinggroup.objects.filter(
+                internal_id=internal_id
+            ).first()
             if existing_by_name or existing_by_id:
                 existing = existing_by_name or existing_by_id
                 if (
@@ -765,9 +778,7 @@ def import_groups(
                     if existing_by_id:
                         reason_parts.append(f"ID „{internal_id}“")
                         if existing.name != name:
-                            reason_parts.append(
-                                f"Name {existing.name} (CSV: {name})"
-                            )
+                            reason_parts.append(f"Name {existing.name} (CSV: {name})")
                         if existing.packstreet != packstreet:
                             reason_parts.append(
                                 f"Packstraße {existing.packstreet.name} (CSV: {packstreet_name})"
@@ -863,8 +874,11 @@ def delete_group(request: HttpRequest, group_id: int) -> tuple[int, None]:
     if group.packstreet.is_stock:
         raise HttpError(400, "Die Lager-Gruppe kann nicht gelöscht werden.")
     if Rental.objects.filter(
-        group=group, quantity__gt=0,
-        item_type__in=ItemType.objects.filter(item_class=ItemClass.RENTABLE).values("key"),
+        group=group,
+        quantity__gt=0,
+        item_type__in=ItemType.objects.filter(item_class=ItemClass.RENTABLE).values(
+            "key"
+        ),
     ).exists():
         raise HttpError(
             409,
@@ -1010,9 +1024,7 @@ def scan_crate(
 
     group = get_object_or_404(Cookinggroup, pk=group_id)
     if group.packstreet.is_stock:
-        raise HttpError(
-            400, "Aktionen für die Lager-Gruppe sind nicht erlaubt."
-        )
+        raise HttpError(400, "Aktionen für die Lager-Gruppe sind nicht erlaubt.")
 
     stock_group = get_object_or_404(
         Cookinggroup.objects.select_related("packstreet"),
@@ -1050,8 +1062,7 @@ def scan_crate(
                 crate.last_seen_with.packstreet.is_stock
             ):
                 warning = (
-                    f"Kiste zuletzt bei "
-                    f"{crate.last_seen_with.name} gesehen."
+                    f"Kiste zuletzt bei " f"{crate.last_seen_with.internal_id} gesehen."
                 )
 
         with transaction.atomic():
@@ -1063,10 +1074,9 @@ def scan_crate(
                 quantity=1,
                 barcode=payload.barcode,
             )
-            rental, _created_rental = (
-                Rental.objects.select_for_update().get_or_create(
-                    group=group, item_type=item.key,
-                )
+            rental, _created_rental = Rental.objects.select_for_update().get_or_create(
+                group=group,
+                item_type=item.key,
             )
             rental.quantity += 1
             rental.save(update_fields=["quantity"])
@@ -1084,12 +1094,9 @@ def scan_crate(
                         "30 Sekunden gescannt.",
                     )
                 warning = "Kiste bereits im Lager."
-            elif crate.last_seen_with is not None and (
-                crate.last_seen_with != group
-            ):
+            elif crate.last_seen_with is not None and (crate.last_seen_with != group):
                 warning = (
-                    f"Kiste zuletzt bei "
-                    f"{crate.last_seen_with.name} gesehen."
+                    f"Kiste zuletzt bei " f"{crate.last_seen_with.internal_id} gesehen."
                 )
 
         with transaction.atomic():
@@ -1101,10 +1108,9 @@ def scan_crate(
                 quantity=1,
                 barcode=payload.barcode,
             )
-            rental, _created_rental = (
-                Rental.objects.select_for_update().get_or_create(
-                    group=group, item_type=item.key,
-                )
+            rental, _created_rental = Rental.objects.select_for_update().get_or_create(
+                group=group,
+                item_type=item.key,
             )
             rental.quantity -= 1
             rental.save(update_fields=["quantity"])
@@ -1115,9 +1121,7 @@ def scan_crate(
 
     group.refresh_from_db()
 
-    rental_after = Rental.objects.filter(
-        group=group, item_type=item.key
-    ).first()
+    rental_after = Rental.objects.filter(group=group, item_type=item.key).first()
     quantity = rental_after.quantity if rental_after else 0
 
     return {
@@ -1147,7 +1151,11 @@ def recent_actions(
     by the DELETE endpoint.
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
-    qs = group.actions.filter(deleted_at__isnull=True).select_related("user").order_by("-timestamp")
+    qs = (
+        group.actions.filter(deleted_at__isnull=True)
+        .select_related("user")
+        .order_by("-timestamp")
+    )
 
     return [
         {
@@ -1169,9 +1177,7 @@ def recent_actions(
     response=list[UnexpectedReturnOut],
 )
 @require_permissions(IsAuthenticated)
-def unexpected_returns(
-    request: HttpRequest, group_id: int
-) -> list[dict[str, Any]]:
+def unexpected_returns(request: HttpRequest, group_id: int) -> list[dict[str, Any]]:
     """Return barcodes this group returned that were expected to be at another group."""
     group = get_object_or_404(Cookinggroup, pk=group_id)
 
@@ -1202,17 +1208,18 @@ def unexpected_returns(
             and action.expected_group_id != group.pk
         ):
             expected_group_ids.add(action.expected_group_id)
-            results.append({
-                "barcode": action.barcode,
-                "expected_group_id": action.expected_group_id,
-                "expected_group_name": "",  # filled below
-                "timestamp": action.timestamp,
-            })
+            results.append(
+                {
+                    "barcode": action.barcode,
+                    "expected_group_id": action.expected_group_id,
+                    "expected_group_name": "",  # filled below
+                    "timestamp": action.timestamp,
+                }
+            )
 
     if expected_group_ids:
         groups_map = {
-            g.pk: g.name
-            for g in Cookinggroup.objects.filter(pk__in=expected_group_ids)
+            g.pk: g.name for g in Cookinggroup.objects.filter(pk__in=expected_group_ids)
         }
         for r in results:
             r["expected_group_name"] = groups_map[r["expected_group_id"]]
@@ -1350,13 +1357,15 @@ def _check_integrity() -> list[dict[str, Any]]:
             rental_row = rentals.get(item_type)
             rental_qty = rental_row.quantity if rental_row else 0
             if rental_qty != computed:
-                mismatches.append({
-                    "group_id": group.pk,
-                    "group_name": group.name,
-                    "item_type": item_type,
-                    "rental_quantity": rental_qty,
-                    "computed_quantity": computed,
-                })
+                mismatches.append(
+                    {
+                        "group_id": group.pk,
+                        "group_name": group.name,
+                        "item_type": item_type,
+                        "rental_quantity": rental_qty,
+                        "computed_quantity": computed,
+                    }
+                )
     return mismatches
 
 
