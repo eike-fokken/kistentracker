@@ -35,7 +35,6 @@ services:
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
     volumes:
       - data:/app/data
-      - caddy_data:/caddy-data:ro
     networks:
       - dbtrials
     restart: unless-stopped

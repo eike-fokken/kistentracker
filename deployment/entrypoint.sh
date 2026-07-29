@@ -7,7 +7,6 @@ set -e
 cd /app/dbtrials
 
 python manage.py migrate --noinput
-cp /caddy-data/pki/authorities/local/root.crt /app/staticfiles/ca.crt 2>/dev/null || true
 python manage.py collectstatic --noinput
 
 exec gunicorn dbtrials.wsgi:application \

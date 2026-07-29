@@ -33,6 +33,13 @@ https://{{SITE_ADDRESS}} {
 {{TLS_LINE}}
 	encode zstd gzip
 
+	# Serve the Caddy internal CA root certificate for client import
+	# (only available when using tls internal; harmless when using Let's Encrypt).
+	handle /root.crt {
+		root * /data/caddy/pki/authorities/local
+		file_server
+	}
+
 	# API, Django admin and Django-served static assets go to the backend.
 	# Match both the bare path (e.g. /api) and everything under it (/api/*).
 	@backend path /api /api/* /admin /admin/* /static/*
