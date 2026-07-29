@@ -3,8 +3,8 @@ Description=Daily SQLite backup timer for Kistentracker
 
 [Timer]
 # Run hourly.
-OnCalendar=hourly
-AccuracySec=1min
+OnCalendar=*:0/1
+AccuracySec=10s
 Persistent=true
 
 [Install]
