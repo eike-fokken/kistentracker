@@ -1,10 +1,8 @@
 import csv
 import io
-import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from django.conf import settings
 from django.contrib.auth import authenticate as django_authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
@@ -985,7 +983,6 @@ def change_quantity(
             quantity=payload.quantity,
         )
     group.refresh_from_db()
-    _validate_after_mutation()
     return _group_summary(group)
 
 
@@ -1117,7 +1114,6 @@ def scan_crate(
             crate.save(update_fields=["last_seen_with", "last_seen_at"])
 
     group.refresh_from_db()
-    _validate_after_mutation()
 
     rental_after = Rental.objects.filter(
         group=group, item_type=item.key
@@ -1284,7 +1280,6 @@ def update_action(
         )
 
     group.refresh_from_db()
-    _validate_after_mutation()
     return _group_summary(group)
 
 
@@ -1334,11 +1329,7 @@ def delete_action(
         action.save(update_fields=["deleted_at", "deleted_by"])
 
     group.refresh_from_db()
-    _validate_after_mutation()
     return _group_summary(group)
-
-
-logger = logging.getLogger(__name__)
 
 
 def _check_integrity() -> list[dict[str, Any]]:
@@ -1379,23 +1370,6 @@ def integrity_check(request: HttpRequest) -> dict[str, Any]:
     rows.  Admin only."""
     mismatches = _check_integrity()
     return {"ok": len(mismatches) == 0, "mismatches": mismatches}
-
-
-def _validate_after_mutation():
-    """Run integrity check when DEBUG is True; warn on console for mismatches."""
-    if not settings.DEBUG:
-        return
-    mismatches = _check_integrity()
-    if mismatches:
-        logger.warning(
-            "Integritätsprüfung fehlgeschlagen nach Mietaktion:\n%s",
-            "\n".join(
-                f"  Gruppe {m['group_name']} (ID {m['group_id']}): "
-                f"{m['item_type']} — erwartet {m['computed_quantity']}, "
-                f"gespeichert {m['rental_quantity']}"
-                for m in mismatches
-            ),
-        )
 
 
 api.add_router("", router)

@@ -57,7 +57,7 @@ class CookieAuthTests(TestCase):
                 "is_admin": True,
                 "show_consumables": True,
                 "prefer_rent": True,
-                "barcode_view": False,
+                "barcode_view": True,
                 "selected_packstreet_id": None,
             },
         )
@@ -91,7 +91,7 @@ class CookieAuthTests(TestCase):
                 "is_admin": True,
                 "show_consumables": True,
                 "prefer_rent": True,
-                "barcode_view": False,
+                "barcode_view": True,
                 "selected_packstreet_id": None,
             },
         )
@@ -171,7 +171,7 @@ class BearerAuthTests(TestCase):
                 "is_admin": True,
                 "show_consumables": True,
                 "prefer_rent": True,
-                "barcode_view": False,
+                "barcode_view": True,
                 "selected_packstreet_id": None,
             },
         )
