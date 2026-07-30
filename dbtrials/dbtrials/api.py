@@ -952,6 +952,13 @@ def change_quantity(
         raise HttpError(400, "Ausleihe: Menge muss eine positive Zahl sein.")
     if payload.action == ActionType.RETURN and payload.quantity < 0:
         raise HttpError(400, "Rückgabe: Menge muss eine positive Zahl sein.")
+    if payload.quantity > 1000:
+        raise HttpError(
+            400,
+            "Man kann nicht mehr als 1000 Kisten gleichzeitig ausleihen! "
+            "Hast du versucht, einen Barcode im Zahlen-Modus zu scannen? "
+            "Klicke auf 'Zahlen-Modus', um ihn zu verlassen und zum Barcode-Modus zu kommen.",
+        )
     if payload.action not in (ActionType.RENT, ActionType.RETURN):
         raise HttpError(400, "Nur Ausleihe oder Rückgabe ist erlaubt.")
     if (
