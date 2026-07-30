@@ -39,7 +39,7 @@ body.body--error {
 }
 
 body.body--warning {
-  background: #fde68a;
+    background: #fbbf24;
 }
 
 .app {
