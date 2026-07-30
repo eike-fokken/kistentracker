@@ -170,7 +170,7 @@ export function GroupOverview({
     requestAnimationFrame(() => {
       barcodeInputRef.current?.focus();
     });
-  }, [data, preferRent, barcodeView]);
+  }, [data, preferRent, barcodeView, scanError]);
 
   useEffect(() => {
     if (scanError) {
