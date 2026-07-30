@@ -35,7 +35,7 @@ body {
 }
 
 body.body--error {
-  background: #fecaca;
+  background: #dc2626;
 }
 
 body.body--warning {
