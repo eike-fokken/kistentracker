@@ -478,6 +478,12 @@ export default function App() {
         onSubmit={async (e) => {
           e.preventDefault();
           const term = search.trim();
+          if (term.startsWith("80030")) {
+            setGraiWarning(true);
+            setSearch("");
+            searchInputRef.current?.focus();
+            return;
+          }
           if (!term) return;
           const results = await fetchSearchGroups(term);
           if (results.length === 1) {
@@ -494,15 +500,8 @@ export default function App() {
           value={search}
           placeholder="Gruppenname oder -ID suchen…"
           onChange={(e) => {
-            const val = e.target.value;
-            if (val.trim().startsWith("80030")) {
-              setGraiWarning(true);
-              setSearch("");
-              setTimeout(() => searchInputRef.current?.focus(), 0);
-              return;
-            }
             setGraiWarning(false);
-            setSearch(val);
+            setSearch(e.target.value);
           }}
           ref={searchInputRef}
           aria-label="Gruppen durchsuchen"
