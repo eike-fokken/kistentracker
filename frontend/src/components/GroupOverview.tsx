@@ -89,6 +89,7 @@ export function GroupOverview({
   const handleRowError = useCallback((message: string) => {
     setScanError(message);
     setScanWarning(null);
+    playErrorBeep();
   }, []);
 
   async function handleDeleteGroup() {

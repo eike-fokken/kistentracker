@@ -56,6 +56,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
         onUpdated(updated);
         setAmount("");
       } catch (err) {
+        setAmount("");
         onError(err instanceof ApiError ? err.message : "Aktion fehlgeschlagen.");
       } finally {
         setBusy(false);
