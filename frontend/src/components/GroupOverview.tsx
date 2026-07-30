@@ -86,6 +86,11 @@ export function GroupOverview({
     [onGroupChanged, onReload],
   );
 
+  const handleRowError = useCallback((message: string) => {
+    setScanError(message);
+    setScanWarning(null);
+  }, []);
+
   async function handleDeleteGroup() {
     if (!data) return;
     const confirmed = window.confirm(
@@ -413,6 +418,7 @@ export function GroupOverview({
                     item={item}
                     preferRent={preferRent}
                     onUpdated={handleUpdated}
+                    onError={handleRowError}
                     readonly={isStock || barcodeView}
                   />
                 ))}

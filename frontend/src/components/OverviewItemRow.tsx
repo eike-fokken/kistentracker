@@ -13,14 +13,14 @@ interface Props {
   item: GroupOverviewItem;
   preferRent: boolean;
   onUpdated: (group: GroupSummary) => void;
+  onError: (message: string) => void;
   readonly?: boolean;
 }
 
 export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
-  function OverviewItemRow({ groupId, item, preferRent, onUpdated, readonly = false }, ref) {
+  function OverviewItemRow({ groupId, item, preferRent, onUpdated, onError, readonly = false }, ref) {
     const [amount, setAmount] = useState("");
     const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const isConsumable = item.item_class === "consumable";
 
     const inputRef = useRef<HTMLInputElement>(null);
@@ -42,12 +42,11 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
     async function act(raw: string) {
       const quantity = Math.floor(Number(raw));
       if (!Number.isFinite(quantity) || quantity < 1) {
-        setError("Menge muss eine positive Zahl sein.");
+        onError("Menge muss eine positive Zahl sein.");
         return;
       }
 
       setBusy(true);
-      setError(null);
       try {
         const updated = await changeQuantity(groupId, {
           item_type: item.item_type,
@@ -57,7 +56,7 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
         onUpdated(updated);
         setAmount("");
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Aktion fehlgeschlagen.");
+        onError(err instanceof ApiError ? err.message : "Aktion fehlgeschlagen.");
       } finally {
         setBusy(false);
       }
@@ -106,13 +105,12 @@ export const OverviewItemRow = forwardRef<OverviewItemRowHandle, Props>(
           </div>
           )}
           {(readonly || !hasAction) && <div className="overview-cell-spacer" />}
-          {!readonly && exceeds && !error && (
+          {!readonly && exceeds && (
             <p className="banner banner--warning">
               Achtung: die Gruppe hat nur {item.quantity} Stück ausgeliehen. Die
               Rückgabe führt zu einem negativen Bestand.
             </p>
           )}
-          {!readonly && error && <p className="banner banner--error">{error}</p>}
         </td>
       </tr>
     );
