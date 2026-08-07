@@ -130,6 +130,7 @@ class GroupSummaryOut(Schema):
     packstreet: PackstreetOut
     total_items: int
     rentals: list[RentalItemOut]
+    recent_rents: int = 0
 
 
 class GroupOverviewItemOut(Schema):

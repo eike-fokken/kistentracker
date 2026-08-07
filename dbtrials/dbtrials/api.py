@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate as django_authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.db import IntegrityError, transaction
-from django.db.models import OuterRef, ProtectedError, Q, Subquery
+from django.db.models import OuterRef, ProtectedError, Q, Subquery, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -33,6 +33,7 @@ from dbtrials.models import (
     Packstreet,
     Rental,
     RentalAction,
+    User,
 )
 from dbtrials.permissions import (
     AllowAny,
@@ -112,12 +113,24 @@ def _rentable_item_type_keys() -> frozenset[str]:
     )
 
 
-def _group_summary(group: Cookinggroup) -> dict[str, Any]:
+def _group_summary(group: Cookinggroup, *, user: User | None = None) -> dict[str, Any]:
     rentals = [
         RentalItemOut(item_type=r.item_type, quantity=r.quantity)
         for r in group.rentals.order_by("item_type")
         if r.item_type in _rentable_item_type_keys()
     ]
+    recent_rents = 0
+    if user is not None:
+        cutoff = timezone.now() - timedelta(minutes=10)
+        recent_rents = (
+            group.actions.filter(
+                action=ActionType.RENT,
+                user=user,
+                timestamp__gte=cutoff,
+                deleted_at__isnull=True,
+            ).aggregate(total=Sum("quantity"))["total"]
+            or 0
+        )
     return {
         "id": group.pk,
         "name": group.name,
@@ -130,6 +143,7 @@ def _group_summary(group: Cookinggroup) -> dict[str, Any]:
         },
         "total_items": sum(r.quantity for r in rentals),
         "rentals": rentals,
+        "recent_rents": recent_rents,
     }
 
 
@@ -525,7 +539,7 @@ def list_groups(
                 Q(name__icontains=term) | Q(internal_id__icontains=term)
             )
     groups = groups.order_by("packstreet__name", "internal_id", "name")
-    return [_group_summary(group) for group in groups]
+    return [_group_summary(group, user=request.user) for group in groups]
 
 
 @router.get(

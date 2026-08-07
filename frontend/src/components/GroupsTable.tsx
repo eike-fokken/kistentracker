@@ -63,6 +63,7 @@ export function GroupsTable({
                 {itemType.label}
               </th>
             ))}
+            <th className="num">kürzlich ausgegeben</th>
             {isAdmin && <th></th>}
           </tr>
         </thead>
@@ -100,6 +101,7 @@ export function GroupsTable({
                   value={quantityOf(group, itemType.key)}
                 />
               ))}
+              <td className="num">{group.recent_rents ?? 0}</td>
               {isAdmin && (
                 <td>
                   <button

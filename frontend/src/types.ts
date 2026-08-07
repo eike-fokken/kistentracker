@@ -43,6 +43,7 @@ export interface GroupSummary {
   packstreet: Packstreet;
   total_items: number;
   rentals: RentalItem[];
+  recent_rents: number;
 }
 
 /** Payload for renting/returning items (matches `RentActionIn`). */
