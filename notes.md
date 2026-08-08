@@ -16,9 +16,19 @@ TODO:
    `start_on_recent_rental_actions`.)
 
 10. DESIGN Entscheidung: Ein Barcode-Feld für alles? In dem Fall Steuerungsbarcodes, die man am PS-Tresen aufklebt machen zum Modus-Wählen?
+    -> Wenn man im barcode feld eine kochgruppen-id scannt, hat man die KG Karte und will sicher zu der Kochgruppe.
 11. Prüfen, dass Kochgruppen-IDs eindeutig sind.
 12. RentalAction löschen muss auch den Barcode von der Gruppe wieder wegnehmen
     und auf den vorherigen Ort setzen, falls diese RentalAction die letzte war.
     Ansonsten ist das schwierig. Man könnte die Historie nachspielen und
     schauen, ob sie noch konsistent ist. Muss man nochmal drüber nachdenken.
 13. Eine User-Doku schreiben.
+
+
+Joachims Feedback:
+
+Ansichten im Frontend:
+Kochgruppen-ID muss prominenter sein und die aktuelle Kistenzahl muss größer sein.
+Warnschwelle für Kistenzahl und der Hintergrund der Kistenzahl muss ne entsprechende Farbe haben.
+
+Außerdem natürlich (siehe oben) die "recent kisten".
