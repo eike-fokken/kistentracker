@@ -4,19 +4,23 @@ TODO:
 3. cursor per default im bevorzugten feld. DONE
 4. responsive design (der button der daneben liegt) DONE
 5. Gruppennummer kann weg, Name+interner Name muss her. DONE
-6. rental actions sollten den aktuellen Stand speichern, damit total nicht immer neu berechnet werden muss. DONE: Anders gelöst.
+6. rental actions sollten den aktuellen Stand speichern, damit total nicht immer
+   neu berechnet werden muss. DONE: Anders gelöst.
 7. Auf nen Server bringen. DONE
 
 
-8. Noch das deployment glattziehen mit nem eigenen Frontend Container, damit Caddy niemals neustarten muss.
-8.1. Prüfen, wieso Caddy manchmal abgestürzt ist (vielleicht beim Zugriff wenn das Backend tot war?)
+8. Noch das deployment glattziehen mit nem eigenen Frontend Container, damit
+Caddy niemals neustarten muss. 8.1. Prüfen, wieso Caddy manchmal abgestürzt ist
+(vielleicht beim Zugriff wenn das Backend tot war?)
 
 9. Sehen, wie viele Kisten an die aktuelle Gruppe vom eigenen Account innerhalb
    der letzten 30 Minuten ausgegeben wurden (siehe branch
    `start_on_recent_rental_actions`.)
 
-10. DESIGN Entscheidung: Ein Barcode-Feld für alles? In dem Fall Steuerungsbarcodes, die man am PS-Tresen aufklebt machen zum Modus-Wählen?
-    -> Wenn man im barcode feld eine kochgruppen-id scannt, hat man die KG Karte und will sicher zu der Kochgruppe.
+10. DESIGN Entscheidung: Ein Barcode-Feld für alles? In dem Fall
+    Steuerungsbarcodes, die man am PS-Tresen aufklebt machen zum Modus-Wählen?
+    -> Wenn man im barcode feld eine kochgruppen-id scannt, hat man die KG Karte
+    und will sicher zu der Kochgruppe.
 11. Prüfen, dass Kochgruppen-IDs eindeutig sind.
 12. RentalAction löschen muss auch den Barcode von der Gruppe wieder wegnehmen
     und auf den vorherigen Ort setzen, falls diese RentalAction die letzte war.
@@ -27,8 +31,26 @@ TODO:
 
 Joachims Feedback:
 
-Ansichten im Frontend:
-Kochgruppen-ID muss prominenter sein und die aktuelle Kistenzahl muss größer sein.
-Warnschwelle für Kistenzahl und der Hintergrund der Kistenzahl muss ne entsprechende Farbe haben.
+Ansichten im Frontend: Kochgruppen-ID muss prominenter sein und die aktuelle
+Kistenzahl muss größer sein. Warnschwelle für Kistenzahl und der Hintergrund der
+Kistenzahl muss ne entsprechende Farbe haben.
 
 Außerdem natürlich (siehe oben) die "recent kisten".
+
+
+Von Caspar:
+14. Pfand soll von der App getrackt werden und es muss verboten sein, Gruppen
+    Kisten zu geben oder abzunehmen, die noch keinen Pfand bezahlt oder Pfand
+    schon zurueck bekommen haben.
+
+15. Idee (siehe auch 16): Kisten werden vor der Ausgabe eingebucht und dann:
+16. Zurueckgenommene Kisten (nicht ausgegebene auch) kommen auf einen
+    Stapel, der im Nachgang gebucht wird.
+17. Fuer die Diskussion mit den Gruppen: Es waere gut, wenn wir argumentieren
+    koennen ala: Du hast Kisten x,y,z bekommen, x hast du gebracht, y kam
+    zurueck von woanders, aber z fehlt einfach noch komplett!
+
+18. Handy-App! Womoeglich mit extern bezahlter Software. Argument: Software
+    entwickelt sich viel schneller als Hardware.
+19. Wir sollten alle Kisten anfangs abscannen! Dann auch Haendler-Kisten scannen
+    und in den Pool aufnehmen.
