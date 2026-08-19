@@ -1339,6 +1339,45 @@ def delete_action(
                 rental.quantity += action.quantity
             rental.save(update_fields=["quantity"])
 
+        if action.barcode is not None:
+            later_action_with_this_barcode = (
+                RentalAction.objects.filter(
+                    barcode=action.barcode,
+                    deleted_at__isnull=True,
+                    timestamp__gt=action.timestamp,
+                )
+                .exclude(pk=action.pk)
+                .exists()
+            )
+            if not later_action_with_this_barcode:
+                crate = Crate.objects.filter(barcode=action.barcode).first()
+                if crate is not None:
+                    stock_group = get_object_or_404(Cookinggroup, name="Lager")
+                    previous_non_deleted_action = (
+                        RentalAction.objects.filter(
+                            barcode=action.barcode,
+                            deleted_at__isnull=True,
+                            timestamp__lt=action.timestamp,
+                        )
+                        .order_by("-timestamp")
+                        .first()
+                    )
+                    if previous_non_deleted_action is not None:
+                        if previous_non_deleted_action.action == ActionType.RENT:
+                            crate.last_seen_with = previous_non_deleted_action.group
+                        else:
+                            crate.last_seen_with = stock_group
+                        crate.last_seen_at = previous_non_deleted_action.timestamp
+                    else:
+                        first_ever_action = (
+                            RentalAction.objects.filter(barcode=action.barcode)
+                            .order_by("timestamp")
+                            .first()
+                        )
+                        crate.last_seen_with = stock_group
+                        crate.last_seen_at = first_ever_action.timestamp
+                    crate.save(update_fields=["last_seen_with", "last_seen_at"])
+
         action.deleted_at = timezone.now()
         action.deleted_by = user
         action.save(update_fields=["deleted_at", "deleted_by"])
