@@ -1,13 +1,4 @@
 TODO:
-1. Verbrauchsartikel einblenden/ausblenden sollte ein User-flag sein. DONE
-2. user flag: bevorzuge ausleihen/ruecknehmen. DONE
-3. cursor per default im bevorzugten feld. DONE
-4. responsive design (der button der daneben liegt) DONE
-5. Gruppennummer kann weg, Name+interner Name muss her. DONE
-6. rental actions sollten den aktuellen Stand speichern, damit total nicht immer
-   neu berechnet werden muss. DONE: Anders gelöst.
-7. Auf nen Server bringen. DONE
-
 
 8. Noch das deployment glattziehen mit nem eigenen Frontend Container, damit
 Caddy niemals neustarten muss. 8.1. Prüfen, wieso Caddy manchmal abgestürzt ist
@@ -54,3 +45,16 @@ Von Caspar:
     entwickelt sich viel schneller als Hardware.
 19. Wir sollten alle Kisten anfangs abscannen! Dann auch Haendler-Kisten scannen
     und in den Pool aufnehmen.
+
+
+
+
+1. Verbrauchsartikel einblenden/ausblenden sollte ein User-flag sein. DONE
+2. user flag: bevorzuge ausleihen/ruecknehmen. DONE
+3. cursor per default im bevorzugten feld. DONE
+4. responsive design (der button der daneben liegt) DONE
+5. Gruppennummer kann weg, Name+interner Name muss her. DONE
+6. rental actions sollten den aktuellen Stand speichern, damit total nicht immer
+   neu berechnet werden muss. DONE: Anders gelöst: Es gibt ein eigenes Rental model, das das pro Gruppe speichert.
+7. Auf nen Server bringen. DONE
+
