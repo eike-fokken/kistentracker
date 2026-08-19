@@ -1,7 +1,10 @@
 """Tests for barcode reconciliation when deleting rental actions."""
 
+from datetime import datetime
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 
 from dbtrials.models import ActionType, Cookinggroup, Crate, Packstreet, RentalAction
 
@@ -59,7 +62,7 @@ class DeleteActionBarcodeTests(TestCase):
 
     # --- No previous action: revert to stock at first-ever timestamp -------
 
-    def test_delete_only_action_reverts_to_stock_at_first_timestamp(self) -> None:
+    def test_delete_only_action_reverts_to_stock_at_marker_date(self) -> None:
         self._scan(self.group.pk, BARCODE_1, "rent")
         action = self._action(BARCODE_1)
         crate = Crate.objects.get(barcode=BARCODE_1)
@@ -69,7 +72,7 @@ class DeleteActionBarcodeTests(TestCase):
 
         crate.refresh_from_db()
         self.assertEqual(crate.last_seen_with, self.stock_group)
-        self.assertEqual(crate.last_seen_at, action.timestamp)
+        self.assertEqual(crate.last_seen_at, datetime(1900, 1, 1, tzinfo=timezone.UTC))
 
     # --- Previous action exists: replay its state ---------------------------
 
@@ -136,7 +139,7 @@ class DeleteActionBarcodeTests(TestCase):
 
         crate.refresh_from_db()
         self.assertEqual(crate.last_seen_with, self.stock_group)
-        self.assertEqual(crate.last_seen_at, rent_action.timestamp)
+        self.assertEqual(crate.last_seen_at, datetime(1900, 1, 1, tzinfo=timezone.UTC))
 
     # --- Missing crate ------------------------------------------------------
 

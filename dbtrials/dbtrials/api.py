@@ -1369,13 +1369,8 @@ def delete_action(
                             crate.last_seen_with = stock_group
                         crate.last_seen_at = previous_non_deleted_action.timestamp
                     else:
-                        first_ever_action = (
-                            RentalAction.objects.filter(barcode=action.barcode)
-                            .order_by("timestamp")
-                            .first()
-                        )
                         crate.last_seen_with = stock_group
-                        crate.last_seen_at = first_ever_action.timestamp
+                        crate.last_seen_at = datetime(1900, 1, 1, tzinfo=timezone.UTC)
                     crate.save(update_fields=["last_seen_with", "last_seen_at"])
 
         action.deleted_at = timezone.now()
