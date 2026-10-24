@@ -29,6 +29,9 @@
                         "context": 131072,
                         "output": 16384
                     }
+                },
+                "deepseek/deepseek-v4.1-flash-1017": {
+                    "name": "deepseek V4.1 flash-1017"
                 }
             }
         }
