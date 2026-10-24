@@ -1,8 +1,10 @@
 TODO:
 
 8. Noch das deployment glattziehen mit nem eigenen Frontend Container, damit
-Caddy niemals neustarten muss. 8.1. Prüfen, wieso Caddy manchmal abgestürzt ist
-(vielleicht beim Zugriff wenn das Backend tot war?)
+   Caddy niemals neustarten muss.
+
+    8.1. Prüfen, wieso Caddy manchmal abgestürzt ist
+        (vielleicht beim Zugriff wenn das Backend tot war?)
 
 9. Sehen, wie viele Kisten an die aktuelle Gruppe vom eigenen Account innerhalb
    der letzten 30 Minuten ausgegeben wurden (siehe branch
@@ -12,7 +14,7 @@ Caddy niemals neustarten muss. 8.1. Prüfen, wieso Caddy manchmal abgestürzt is
     Steuerungsbarcodes, die man am PS-Tresen aufklebt machen zum Modus-Wählen?
     -> Wenn man im barcode feld eine kochgruppen-id scannt, hat man die KG Karte
     und will sicher zu der Kochgruppe.
-11. Prüfen, dass Kochgruppen-IDs eindeutig sind.
+11. Prüfen, dass Kochgruppen-IDs eindeutig sind (z.b. KG ID mit Raute anfangen).
 12. RentalAction löschen muss auch den Barcode von der Gruppe wieder wegnehmen
     und auf den vorherigen Ort setzen, falls diese RentalAction die letzte war.
     Ansonsten ist das schwierig. Man könnte die Historie nachspielen und
@@ -38,9 +40,8 @@ Von Caspar:
 16. Zurueckgenommene Kisten (nicht ausgegebene auch) kommen auf einen
     Stapel, der im Nachgang gebucht wird.
 17. Fuer die Diskussion mit den Gruppen: Es waere gut, wenn wir argumentieren
-    koennen ala: Du hast Kisten x,y,z bekommen, x hast du gebracht, y kam
+    koennen a la: Du hast Kisten x,y,z bekommen, x hast du gebracht, y kam
     zurueck von woanders, aber z fehlt einfach noch komplett!
-
 18. Handy-App! Womoeglich mit extern bezahlter Software. Argument: Software
     entwickelt sich viel schneller als Hardware.
 19. Wir sollten alle Kisten anfangs abscannen! Dann auch Haendler-Kisten scannen
