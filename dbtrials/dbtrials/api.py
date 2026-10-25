@@ -1035,6 +1035,13 @@ def scan_crate(
     The barcode is validated as a GRAI. The crate is created on first sighting.
     Rescans within 30 seconds against the same group/stock are rejected as
     double-scan, otherwise processed with a warning.
+
+    Both the ``Rental`` counter and the ``Crate`` row are mutated under row
+    locks inside a single transaction, so concurrent scans of the same barcode
+    cannot leave the rental total and the crate location out of sync. On SQLite
+    ``select_for_update`` is a no-op; there, correctness comes from doing the
+    whole read-modify-write inside one ``atomic()`` block. Rows are always
+    locked in the same order (rental, then crate) to avoid deadlocks.
     """
     try:
         validate_grai(payload.barcode)
@@ -1050,44 +1057,49 @@ def scan_crate(
 
     stock_group = get_object_or_404(
         Cookinggroup.objects.select_related("packstreet"),
-        name="Lager",
+        packstreet__is_stock=True,
     )
 
     item = get_object_or_404(ItemType, key="kiste")
 
-    crate, crate_was_created = Crate.objects.get_or_create(
-        barcode=payload.barcode,
-    )
     warning: str | None = None
-    now = timezone.now()
-
-    if not crate_was_created:
-        elapsed = (
-            (now - crate.last_seen_at).total_seconds()
-            if crate.last_seen_at is not None
-            else 999
+    with transaction.atomic():
+        rental, _created_rental = Rental.objects.select_for_update().get_or_create(
+            group=group,
+            item_type=item.key,
         )
-    else:
-        elapsed = 0
+        crate, crate_was_created = Crate.objects.select_for_update().get_or_create(
+            barcode=payload.barcode,
+        )
+        now = timezone.now()
 
-    if payload.action == ActionType.RENT:
         if not crate_was_created:
-            if crate.last_seen_with == group:
-                if elapsed < 30:
-                    raise HttpError(
-                        425,
-                        f"Kiste {payload.barcode} wurde vor weniger als "
-                        "30 Sekunden gescannt.",
-                    )
-                warning = "Kiste bereits bei dieser Gruppe."
-            elif crate.last_seen_with is not None and not (
-                crate.last_seen_with.packstreet.is_stock
-            ):
-                warning = (
-                    f"Kiste zuletzt bei " f"{crate.last_seen_with.internal_id} gesehen."
-                )
+            elapsed = (
+                (now - crate.last_seen_at).total_seconds()
+                if crate.last_seen_at is not None
+                else 999
+            )
+        else:
+            elapsed = 0
 
-        with transaction.atomic():
+        if payload.action == ActionType.RENT:
+            if not crate_was_created:
+                if crate.last_seen_with == group:
+                    if elapsed < 30:
+                        raise HttpError(
+                            425,
+                            f"Kiste {payload.barcode} wurde vor weniger als "
+                            "30 Sekunden gescannt.",
+                        )
+                    warning = "Kiste bereits bei dieser Gruppe."
+                elif crate.last_seen_with is not None and not (
+                    crate.last_seen_with.packstreet.is_stock
+                ):
+                    warning = (
+                        f"Kiste zuletzt bei "
+                        f"{crate.last_seen_with.internal_id} gesehen."
+                    )
+
             RentalAction.objects.create(
                 group=group,
                 user=getattr(request, "auth", None),
@@ -1096,32 +1108,36 @@ def scan_crate(
                 quantity=1,
                 barcode=payload.barcode,
             )
-            rental, _created_rental = Rental.objects.select_for_update().get_or_create(
-                group=group,
-                item_type=item.key,
-            )
             rental.quantity += 1
             rental.save(update_fields=["quantity"])
 
             crate.last_seen_with = group
             crate.last_seen_at = now
             crate.save(update_fields=["last_seen_with", "last_seen_at"])
-    else:
-        if not crate_was_created:
-            if crate.last_seen_with == stock_group:
-                if elapsed < 30:
-                    raise HttpError(
-                        425,
-                        f"Kiste {payload.barcode} wurde vor weniger als "
-                        "30 Sekunden gescannt.",
+        else:
+            if not crate_was_created:
+                if crate.last_seen_with == stock_group:
+                    if elapsed < 30:
+                        raise HttpError(
+                            425,
+                            f"Kiste {payload.barcode} wurde vor weniger als "
+                            "30 Sekunden gescannt.",
+                        )
+                    warning = "Kiste bereits im Lager."
+                elif crate.last_seen_with is not None and (
+                    crate.last_seen_with != group
+                ):
+                    warning = (
+                        f"Kiste zuletzt bei "
+                        f"{crate.last_seen_with.internal_id} gesehen."
                     )
-                warning = "Kiste bereits im Lager."
-            elif crate.last_seen_with is not None and (crate.last_seen_with != group):
-                warning = (
-                    f"Kiste zuletzt bei " f"{crate.last_seen_with.internal_id} gesehen."
+
+            if rental.quantity <= 0:
+                raise HttpError(
+                    409,
+                    "Für diese Gruppe ist keine Kiste zum Rückbuchen vorhanden.",
                 )
 
-        with transaction.atomic():
             RentalAction.objects.create(
                 group=group,
                 user=getattr(request, "auth", None),
@@ -1130,10 +1146,6 @@ def scan_crate(
                 quantity=1,
                 barcode=payload.barcode,
             )
-            rental, _created_rental = Rental.objects.select_for_update().get_or_create(
-                group=group,
-                item_type=item.key,
-            )
             rental.quantity -= 1
             rental.save(update_fields=["quantity"])
 
@@ -1141,10 +1153,7 @@ def scan_crate(
             crate.last_seen_at = now
             crate.save(update_fields=["last_seen_with", "last_seen_at"])
 
-    group.refresh_from_db()
-
-    rental_after = Rental.objects.filter(group=group, item_type=item.key).first()
-    quantity = rental_after.quantity if rental_after else 0
+        quantity = rental.quantity
 
     return {
         "ok": True,
@@ -1366,7 +1375,9 @@ def delete_action(
             if not later_action_with_this_barcode:
                 crate = Crate.objects.filter(barcode=action.barcode).first()
                 if crate is not None:
-                    stock_group = get_object_or_404(Cookinggroup, name="Lager")
+                    stock_group = get_object_or_404(
+                        Cookinggroup, packstreet__is_stock=True
+                    )
                     previous_non_deleted_action = (
                         RentalAction.objects.filter(
                             barcode=action.barcode,
