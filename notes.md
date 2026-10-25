@@ -30,6 +30,9 @@ Kistenzahl muss ne entsprechende Farbe haben.
 
 Außerdem natürlich (siehe oben) die "recent kisten".
 
+Mehr scanbare Artikel (beim Tresen EAN-codes buchen), am besten mit Anbindung an Verkel, damit es direkt ausgebucht wird.
+
+
 
 Von Caspar:
 14. Pfand soll von der App getrackt werden und es muss verboten sein, Gruppen
