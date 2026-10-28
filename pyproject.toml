@@ -61,5 +61,8 @@ ignore-paths = ["^.*/migrations/.*$", "^.*/tests/.*$"]
 disable = [
     "line-too-long",
     "missing-module-docstring",
+    # C0302: api.py is a long module by design -- one file holding the whole
+    # REST surface reads better than anagram-sized fragments split by topic.
+    "too-many-lines",
     "R",
 ]

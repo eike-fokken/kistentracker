@@ -19,8 +19,8 @@ def validate_grai(barcode: str) -> None:
     Raises:
         ValueError: if the barcode is not a valid GRAI.
     """
-
-    MIN_LENGTH = 18  # AI (8003) + filler (0) + 13-digit asset identifier
+    # AI (8003) + filler (0) + 13-digit asset identifier
+    MIN_LENGTH = 18  # pylint: disable=invalid-name
 
     if len(barcode) < MIN_LENGTH:
         raise ValueError(

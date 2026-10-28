@@ -171,7 +171,7 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
         }
         for item_type in ItemType.objects.all()
     ]
-    recent_actions = [
+    recent_actions_list = [
         {
             "id": action.pk,
             "action": ActionType(action.action),
@@ -197,7 +197,7 @@ def _group_overview(group: Cookinggroup) -> dict[str, Any]:
             "display_priority": group.packstreet.display_priority,
         },
         "items": items,
-        "recent_actions": recent_actions,
+        "recent_actions": recent_actions_list,
     }
 
 
@@ -693,7 +693,7 @@ _CSV_HEADER = ("Gruppenname", "Kochgruppen-ID", "Packstraße")
 
 
 class InvalidImportHeadersError(Exception):
-    pass
+    """Exception for invalid csv input, namely with invalid headers."""
 
 
 def _require_header(required: tuple[str, ...], fieldnames: list[str]) -> None:
@@ -1063,8 +1063,8 @@ def scan_crate(
     """
     try:
         validate_grai(payload.barcode)
-    except ValueError as exc:
-        raise HttpError(400, str(exc))
+    except ValueError as e:
+        raise HttpError(400, str(e)) from e
 
     if payload.action not in (ActionType.RENT, ActionType.RETURN):
         raise HttpError(400, "Nur Ausleihe oder Rückgabe ist erlaubt.")
@@ -1237,15 +1237,15 @@ def unexpected_returns(request: HttpRequest, group_id: int) -> list[dict[str, An
         deleted_at__isnull=True,
     )
 
-    PriorAction = RentalAction.objects.filter(
+    prior_action = RentalAction.objects.filter(
         barcode=OuterRef("barcode"),
         timestamp__lt=OuterRef("timestamp"),
         deleted_at__isnull=True,
     ).order_by("-timestamp")[:1]
 
     annotated = return_actions.annotate(
-        prior_action_type=Subquery(PriorAction.values("action")),
-        expected_group_id=Subquery(PriorAction.values("group_id")),
+        prior_action_type=Subquery(prior_action.values("action")),
+        expected_group_id=Subquery(prior_action.values("group_id")),
     ).order_by("-timestamp")
 
     expected_group_ids: set[int] = set()
