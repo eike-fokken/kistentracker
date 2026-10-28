@@ -52,6 +52,13 @@ django_settings_module = "dbtrials.settings"
 [tool.isort]
 profile = "black"
 
+[tool.pydocstyle]
+# Django's makemigrations generates these; there is nothing to document in
+# them, and pydocstyle has no `exclude`, so prune the directory during its
+# walk. The negative lookahead preserves pydocstyle's own default of skipping
+# `test_*.py` files.
+match-dir = '(?!migrations$)[^\\.].*'
+
 [tool.pylint]
 load-plugins = ["pylint_django"]
 django-settings-module = "dbtrials.settings"
