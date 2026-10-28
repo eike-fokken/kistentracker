@@ -5,6 +5,11 @@ Authentication (*who are you?*) is handled by the auth classes wired up in
 here. The two are orthogonal: the very same permission policy applies whether
 a caller arrived with a browser session cookie or a bearer JWT.
 
+The principal is always read from ``request.user``. Both transports configured
+in [api.py][dbtrials.api] set it, so it is the single source of truth in this
+layer; ninja's ``request.auth`` is the same object but is only populated on
+authenticated endpoints.
+
 Every endpoint must declare its policy with ``@require_permissions(...)``.
 Endpoints that forget to do so are denied for *everyone* with a descriptive
 error -- access is fail-closed by construction (see :class:`PermissionRouter`).
@@ -12,11 +17,14 @@ Use :class:`AllowAny` to deliberately make an endpoint public.
 """
 
 import functools
-from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union, override
 
+from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
+
+from dbtrials.models import User
 
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 
@@ -35,7 +43,7 @@ class BasePermission:
     #: Human-readable reason returned to the caller when denied.
     message: str = "You do not have permission to perform this action."
 
-    def has_permission(self, request: HttpRequest, user: Any) -> bool:
+    def has_permission(self, request: HttpRequest, user: AnonymousUser | User) -> bool:
         """Return ``True`` to allow the request, ``False`` to deny it."""
         raise NotImplementedError
 
@@ -43,7 +51,8 @@ class BasePermission:
 class AllowAny(BasePermission):
     """Grant access to everyone, including unauthenticated callers."""
 
-    def has_permission(self, request: HttpRequest, user: Any) -> bool:
+    @override
+    def has_permission(self, request: HttpRequest, user: AnonymousUser | User) -> bool:
         return True
 
 
@@ -53,7 +62,8 @@ class IsAuthenticated(BasePermission):
     code = 401
     message = "Authentication required."
 
-    def has_permission(self, request: HttpRequest, user: Any) -> bool:
+    @override
+    def has_permission(self, request: HttpRequest, user: AnonymousUser | User) -> bool:
         return user is not None and getattr(user, "is_authenticated", False)
 
 
@@ -62,7 +72,8 @@ class IsAdmin(BasePermission):
 
     message = "Admin privileges required."
 
-    def has_permission(self, request: HttpRequest, user: Any) -> bool:
+    @override
+    def has_permission(self, request: HttpRequest, user: AnonymousUser | User) -> bool:
         return getattr(user, "is_admin", False)
 
 
@@ -90,22 +101,17 @@ def require_permissions(
     return decorator
 
 
-def _resolve_user(request: HttpRequest) -> Any:
-    """The authenticated principal, regardless of which transport set it.
-
-    Authenticated endpoints expose the user as ``request.auth``; ``auth=None``
-    endpoints don't, so fall back to Django's ``request.user``.
-    """
-    user = getattr(request, "auth", None)
-    if user is None:
-        user = getattr(request, "user", None)
-    return user
-
-
 def _enforce(
     request: HttpRequest, permissions: Optional[Tuple[BasePermission, ...]]
 ) -> None:
-    """Run a view's declared policy, raising :class:`HttpError` on denial."""
+    """Run a view's declared policy, raising :class:`HttpError` on denial.
+
+    The caller is always ``request.user``: both auth transports in
+    [api.py][dbtrials.api] set it, so the policy sees the same principal no
+    matter whether the request arrived with a session cookie or a bearer
+    token. Unauthenticated requests still have ``request.user`` (Django's
+    ``AuthenticationMiddleware`` guarantees it); it is simply anonymous.
+    """
     if permissions is None:
         # The view forgot to declare a policy: deny everyone, loudly.
         raise HttpError(
@@ -113,9 +119,8 @@ def _enforce(
             "Endpoint misconfigured: no permission policy declared. Decorate "
             "the view with @require_permissions(...) (AllowAny for public).",
         )
-    user = _resolve_user(request)
     for permission in permissions:
-        if not permission.has_permission(request, user):
+        if not permission.has_permission(request, request.user):
             raise HttpError(permission.code, permission.message)
 
 

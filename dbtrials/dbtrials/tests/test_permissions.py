@@ -7,6 +7,7 @@ permission policies independently of how the caller authenticated.
 from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 from django.test import Client, TestCase
 from ninja.errors import HttpError
@@ -14,6 +15,7 @@ from ninja.errors import HttpError
 from dbtrials.models import Packstreet
 from dbtrials.permissions import (
     AllowAny,
+    BasePermission,
     IsAdmin,
     IsAuthenticated,
     PermissionRouter,
@@ -56,7 +58,10 @@ class PolicyDeclarationTests(TestCase):
 
         # The router wraps the view; invoking the wrapped view raises 500.
         wrapped = router.path_operations["/no-policy"].operations[0].view_func
+        # A real request always carries `user` (AuthenticationMiddleware sets
+        # it); a hand-built one has to provide it for the policy to be reached.
         request = HttpRequest()
+        request.user = AnonymousUser()
         with self.assertRaises(HttpError) as ctx:
             wrapped(request)
         self.assertEqual(ctx.exception.status_code, 500)
@@ -166,3 +171,66 @@ class EndpointAuthorizationTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["detail"], "Admin privileges required.")
+
+
+class CallerAttributeContractTests(TestCase):
+    """Pin the assumption that lets endpoints read the caller from ``request.user``.
+
+    Both auth transports set ``request.user``; ninja mirrors the winning result
+    onto ``request.auth``. If a future ninja/ninja_jwt upgrade stops populating
+    either attribute, these tests fail instead of endpoints silently degrading
+    to anonymous callers.
+    """
+
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(
+            username=ADMIN, password=PASSWORD, role="admin"
+        )
+
+    def _bearer(self) -> str:
+        response = self.client.post(
+            "/api/token/pair",
+            data={"username": ADMIN, "password": PASSWORD},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()["access"]
+
+    def test_request_user_is_set_for_bearer_auth(self) -> None:
+        """A bearer request exposes the token's user as ``request.user``."""
+        response = self.client.get(
+            "/api/me", HTTP_AUTHORIZATION=f"Bearer {self._bearer()}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["username"], ADMIN)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_admin)
+
+    def test_request_user_is_set_for_session_auth(self) -> None:
+        """A cookie request exposes the session's user as ``request.user``."""
+        self.client.force_login(self.user)
+        response = self.client.get("/api/me")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["username"], ADMIN)
+
+    def test_policy_reads_the_same_principal_as_the_endpoint(self) -> None:
+        """Authorization and the view body must see one and the same caller.
+
+        A normal user with a *session* cookie presents an admin's *bearer*
+        token. JWT is tried first, so the policy must grant access -- proof
+        that ``request.user`` (what the policy reads) is the token's user and
+        not the session's.
+        """
+        normal = User.objects.create_user(
+            username=NORMAL, password=PASSWORD, role="user"
+        )
+        self.client.force_login(normal)
+
+        response = self.client.post(
+            "/api/packstreets",
+            data={"name": "Policy Sees Token"},
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {self._bearer()}",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Packstreet.objects.filter(name="Policy Sees Token").exists())

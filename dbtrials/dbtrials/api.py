@@ -1,11 +1,9 @@
 import csv
 import io
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from django.contrib.auth import authenticate as django_authenticate
-from django.contrib.auth import login as django_login
-from django.contrib.auth import logout as django_logout
+from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError, transaction
 from django.db.models import OuterRef, ProtectedError, Q, Subquery, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -87,6 +85,10 @@ from dbtrials.schemas import (
 # JWT is listed first so that a request carrying a bearer token is settled by
 # `JWTAuth` and never reaches `SessionAuth` -- i.e. token clients are never
 # subjected to a CSRF check.
+#
+# Both classes set `request.user`, and ninja additionally mirrors the winning
+# result onto `request.auth`. Endpoints therefore read the caller from
+# `request.user` -- one attribute, one meaning, regardless of transport.
 JWT_AUTH = JWTAuth()
 SESSION_AUTH = SessionAuth()  # CSRF-enforcing session-cookie auth
 AUTH = [JWT_AUTH, SESSION_AUTH]
@@ -103,6 +105,17 @@ router = PermissionRouter()
 
 
 # --- Helpers -------------------------------------------------------------
+
+
+def get_authenticated_user(request: HttpRequest) -> User:
+    """Return the user of a request, raise if not authenticated."""
+    user = request.user
+    if not (isinstance(user, User) and user.is_authenticated):
+        raise HttpError(
+            status_code=401,
+            message="Authentication required. Note that this error should never happen, please report it.",
+        )
+    return user
 
 
 def _rentable_item_type_keys() -> frozenset[str]:
@@ -222,14 +235,12 @@ def cookie_login(request: HttpRequest, payload: LoginIn) -> tuple[int, dict[str,
     `X-CSRFToken` header obtained from `GET /api/auth/csrf`.
     """
     _require_csrf(request)
-    user = django_authenticate(
-        request, username=payload.username, password=payload.password
-    )
+    user = authenticate(request, username=payload.username, password=payload.password)
     if user is None:
         raise HttpError(401, "Ungültiger Benutzername oder Passwort.")
     # `login` cycles the session key and rotates the CSRF token (preventing
     # fixation); `CsrfViewMiddleware` then refreshes the `csrftoken` cookie.
-    django_login(request, user)
+    login(request, user)
     return 200, {
         "username": user.get_username(),
         "is_admin": user.is_admin,
@@ -245,7 +256,7 @@ def cookie_login(request: HttpRequest, payload: LoginIn) -> tuple[int, dict[str,
 def cookie_logout(request: HttpRequest) -> dict[str, str]:
     """End the Django session."""
     _require_csrf(request)
-    django_logout(request)
+    logout(request)
     return {"detail": "Abgemeldet."}
 
 
@@ -259,7 +270,7 @@ def cookie_logout(request: HttpRequest) -> dict[str, str]:
 @require_permissions(IsAuthenticated)
 def current_user(request: HttpRequest) -> dict[str, Any]:
     """Return the authenticated user's identity and admin status."""
-    user = getattr(request, "auth")
+    user = get_authenticated_user(request)
     return {
         "username": user.get_username(),
         "is_admin": user.is_admin,
@@ -277,7 +288,7 @@ def current_user(request: HttpRequest) -> dict[str, Any]:
 @require_permissions(IsAuthenticated)
 def update_user(request: HttpRequest, payload: UserUpdateIn) -> dict[str, Any]:
     """Update the authenticated user's preferences."""
-    user = getattr(request, "auth")
+    user = get_authenticated_user(request)
     changed: list[str] = []
     if payload.show_consumables is not None:
         user.show_consumables = payload.show_consumables
@@ -539,7 +550,8 @@ def list_groups(
                 Q(name__icontains=term) | Q(internal_id__icontains=term)
             )
     groups = groups.order_by("packstreet__name", "internal_id", "name")
-    return [_group_summary(group, user=request.user) for group in groups]
+    user = get_authenticated_user(request)
+    return [_group_summary(group, user=user) for group in groups]
 
 
 @router.get(
@@ -769,8 +781,14 @@ def import_groups(
             existing_by_id = Cookinggroup.objects.filter(
                 internal_id=internal_id
             ).first()
-            if existing_by_name or existing_by_id:
-                existing = existing_by_name or existing_by_id
+            if existing_by_name is not None or existing_by_id is not None:
+                existing: Cookinggroup
+                if existing_by_name is not None:
+                    existing = existing_by_name
+                else:
+                    assert existing_by_id is not None
+                    existing = existing_by_id
+
                 if (
                     existing.name == name
                     and existing.internal_id == internal_id
@@ -1013,7 +1031,7 @@ def change_quantity(
 
         RentalAction.objects.create(
             group=group,
-            user=getattr(request, "auth", None),
+            user=get_authenticated_user(request),
             action=payload.action,
             item_type=payload.item_type,
             quantity=payload.quantity,
@@ -1102,7 +1120,7 @@ def scan_crate(
 
             RentalAction.objects.create(
                 group=group,
-                user=getattr(request, "auth", None),
+                user=get_authenticated_user(request),
                 action=ActionType.RENT,
                 item_type=item.key,
                 quantity=1,
@@ -1140,7 +1158,7 @@ def scan_crate(
 
             RentalAction.objects.create(
                 group=group,
-                user=getattr(request, "auth", None),
+                user=get_authenticated_user(request),
                 action=ActionType.RETURN,
                 item_type=item.key,
                 quantity=1,
@@ -1277,8 +1295,8 @@ def update_action(
     if action.deleted_at is not None:
         raise HttpError(400, "Gelöschte Aktionen können nicht bearbeitet werden.")
     old_quantity = action.quantity
-    user = getattr(request, "auth")
-    is_admin = getattr(user, "is_admin", False)
+    user = get_authenticated_user(request)
+    is_admin = user.is_admin
 
     if not is_admin:
         if action.user != user:
@@ -1336,8 +1354,8 @@ def delete_action(
     """
     group = get_object_or_404(Cookinggroup, pk=group_id)
     action = get_object_or_404(RentalAction, pk=action_id, group=group)
-    user = getattr(request, "auth")
-    is_admin = getattr(user, "is_admin", False)
+    user = get_authenticated_user(request)
+    is_admin = user.is_admin
 
     if not is_admin:
         if action.user != user:
@@ -1395,7 +1413,7 @@ def delete_action(
                         crate.last_seen_at = previous_non_deleted_action.timestamp
                     else:
                         crate.last_seen_with = stock_group
-                        crate.last_seen_at = datetime(1900, 1, 1, tzinfo=timezone.UTC)
+                        crate.last_seen_at = datetime(1900, 1, 1, tzinfo=UTC)
                     crate.save(update_fields=["last_seen_with", "last_seen_at"])
 
         action.deleted_at = timezone.now()
