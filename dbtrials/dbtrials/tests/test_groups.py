@@ -299,10 +299,7 @@ class GroupFeatureTests(TestCase):
         Packstreet.objects.create(name="Alpha")
         self._create_group("Existing", "1", Packstreet.objects.get(name="Alpha").pk)
 
-        csv_content = (
-            "Gruppenname,Kochgruppen-ID,Packstraße\n"
-            "Existing,99,Alpha\n"
-        )
+        csv_content = "Gruppenname,Kochgruppen-ID,Packstraße\n" "Existing,99,Alpha\n"
         response = self._import_csv(csv_content)
         self.assertEqual(response.status_code, 400, response.content)
         body = response.json()
@@ -324,9 +321,7 @@ class GroupFeatureTests(TestCase):
     def test_import_duplicates_within_same_file_are_skipped(self) -> None:
         Packstreet.objects.create(name="Alpha")
         csv_content = (
-            "Gruppenname,Kochgruppen-ID,Packstraße\n"
-            "Dup,1,Alpha\n"
-            "Dup,1,Alpha\n"
+            "Gruppenname,Kochgruppen-ID,Packstraße\n" "Dup,1,Alpha\n" "Dup,1,Alpha\n"
         )
         response = self._import_csv(csv_content)
         self.assertEqual(response.status_code, 200)

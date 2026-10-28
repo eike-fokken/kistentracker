@@ -4,18 +4,15 @@ Authorization is orthogonal to the auth transport, so these tests exercise the
 permission policies independently of how the caller authenticated.
 """
 
-from types import SimpleNamespace
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 from django.test import Client, TestCase
 from ninja.errors import HttpError
 
-from dbtrials.models import Packstreet
+from dbtrials.models import Packstreet, UserRole
 from dbtrials.permissions import (
     AllowAny,
-    BasePermission,
     IsAdmin,
     IsAuthenticated,
     PermissionRouter,
@@ -71,28 +68,33 @@ class PolicyDeclarationTests(TestCase):
 class PermissionRuleTests(TestCase):
     """The individual permission rules' allow/deny decisions."""
 
-    anon = SimpleNamespace(is_authenticated=False, is_admin=False)
-    normal = SimpleNamespace(is_authenticated=True, is_admin=False)
-    admin = SimpleNamespace(is_authenticated=True, is_admin=True)
-
     def setUp(self) -> None:
         self.request = HttpRequest()
+        # Real principals, not stand-ins: these are exactly the objects the
+        # auth transports install on `request.user`, so the rules are exercised
+        # against production shapes. None of them is saved, so no database
+        # round-trip is needed.
+        self.anon = AnonymousUser()
+        self.normal = User(role=UserRole.USER)
+        self.admin = User(role=UserRole.ADMIN)
 
     def test_allow_any_grants_everyone(self) -> None:
         rule = AllowAny()
-        self.assertTrue(rule.has_permission(self.request, None))
         self.assertTrue(rule.has_permission(self.request, self.anon))
+        self.assertTrue(rule.has_permission(self.request, self.normal))
+        self.assertTrue(rule.has_permission(self.request, self.admin))
 
     def test_is_authenticated(self) -> None:
         rule = IsAuthenticated()
         self.assertEqual(rule.code, 401)
-        self.assertFalse(rule.has_permission(self.request, None))
         self.assertFalse(rule.has_permission(self.request, self.anon))
         self.assertTrue(rule.has_permission(self.request, self.normal))
+        self.assertTrue(rule.has_permission(self.request, self.admin))
 
     def test_is_admin(self) -> None:
         rule = IsAdmin()
         self.assertEqual(rule.code, 403)
+        self.assertFalse(rule.has_permission(self.request, self.anon))
         self.assertFalse(rule.has_permission(self.request, self.normal))
         self.assertTrue(rule.has_permission(self.request, self.admin))
 
