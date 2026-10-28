@@ -16,6 +16,34 @@ cd dbtrials && poetry run manage.py <command>
 
 For example: `poetry run manage.py test`, `poetry run manage.py migrate`, `poetry run manage.py check`, `poetry run manage.py createsuperuser`.
 
+### After every change: checks and formatting
+
+After making changes, run these from `dbtrials/`, in this order. `black` and `isort`
+**reformat the files in place** — run them last, and re-read any file they touch
+before making further edits.
+
+```
+cd dbtrials
+poetry run mypy dbtrials
+poetry run pylint dbtrials
+poetry run pydocstyle dbtrials
+poetry run black dbtrials
+poetry run isort --profile black dbtrials
+```
+
+- `mypy` must report **0 errors**.
+- `pylint` must score **10.00/10**.
+- `pydocstyle` must exit **0** (migrations are excluded via `[tool.pydocstyle]` in `pyproject.toml`).
+- `black` and `isort` must leave the tree clean; if they rewrite anything, re-run the checks above afterwards.
+
+Also run the test suite: `poetry run manage.py test dbtrials.tests`.
+
+If any of these tools fails to start with an error like
+`AttributeError: module 'platformdirs' has no attribute ...` or
+`SystemError: error return without exception set`, the venv has files owned by
+another user. That is an environment/permissions problem, not a code problem —
+say so instead of trying to work around it.
+
 ## Project Overview
 
 **Kistentracker** (German: "crate tracker") is a rental/inventory tracking system for cooking camps. It tracks which items (e.g. computers, flipcharts) are rented by which cooking groups stationed at packstreets (physical streets/areas). The stack is a Django REST API backend + React SPA frontend.
