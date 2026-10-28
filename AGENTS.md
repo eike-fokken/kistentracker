@@ -11,10 +11,10 @@ NEVER use `uv` and never suggest to use `uv`. This project exclusively uses `poe
 
 
 ```
-cd dbtrials && poetry run manage.py <command>
+cd dbtrials && poetry run python manage.py <command>
 ```
 
-For example: `poetry run manage.py test`, `poetry run manage.py migrate`, `poetry run manage.py check`, `poetry run manage.py createsuperuser`.
+For example: `poetry run python manage.py test`, `poetry run python manage.py migrate`, `poetry run python manage.py check`, `poetry run python manage.py createsuperuser`.
 
 ### After every change: checks and formatting
 
@@ -36,7 +36,22 @@ poetry run isort --profile black dbtrials
 - `pydocstyle` must exit **0** (migrations are excluded via `[tool.pydocstyle]` in `pyproject.toml`).
 - `black` and `isort` must leave the tree clean; if they rewrite anything, re-run the checks above afterwards.
 
-Also run the test suite: `poetry run manage.py test dbtrials.tests`.
+**`mypy` and `pylint` are fast** (~1s and ~8s) and are useful after *every* small
+edit — they catch broken types and unused imports while the change is still fresh.
+**The test suite is slow** (~40s, since it builds and tears down a database), so
+only run it once you consider the change *finished*, not after each intermediate
+step:
+
+```
+poetry run python manage.py test dbtrials.tests
+```
+
+When iterating, prefer running a single test class or module instead of the whole
+suite, e.g.:
+
+```
+poetry run python manage.py test dbtrials.tests.test_permissions
+```
 
 If any of these tools fails to start with an error like
 `AttributeError: module 'platformdirs' has no attribute ...` or
@@ -149,4 +164,4 @@ All env-var driven: `SECRET_KEY`, `DJANGO_DEBUG`, `ALLOWED_HOSTS`, `DJANGO_DB_PA
 - **Debounced search:** 250ms debounce on the group search input.
 - **Stock history:** `GET /groups/{id}/history` returns per-item-type time-series data (cumulative quantity after each action), rendered as Recharts line charts with stepAfter interpolation.
 - **CSV import:** Heuristic header detection; skips rows with too many columns; requires internal_id and group_name columns.
-- **Create superuser:** `cd dbtrials && poetry run manage.py createsuperuser`
+- **Create superuser:** `cd dbtrials && poetry run python manage.py createsuperuser`
