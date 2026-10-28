@@ -1,3 +1,5 @@
+"""Request and response schemas for the REST API."""
+
 from datetime import datetime
 
 from ninja import Schema

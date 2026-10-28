@@ -1,3 +1,10 @@
+"""REST API for the Kistentracker rental tracker.
+
+Every endpoint is registered on a :class:`~dbtrials.permissions.PermissionRouter`
+and must declare its policy with ``@require_permissions``; see
+[dbtrials.permissions][dbtrials.permissions] for the rationale.
+"""
+
 import csv
 import io
 from datetime import UTC, date, datetime, timedelta
@@ -377,8 +384,11 @@ def rename_packstreet(
 )
 @require_permissions(IsAdmin)
 def delete_packstreet(request: HttpRequest, packstreet_id: int) -> tuple[int, None]:
-    """Delete a packstreet. Admin only; blocked while groups still use it
-    or if it is the stock packstreet."""
+    """Delete a packstreet.
+
+    Admin only; blocked while groups still use it or if it is the stock
+    packstreet.
+    """
     packstreet = get_object_or_404(Packstreet, pk=packstreet_id)
     if packstreet.is_stock:
         raise HttpError(400, "Die Lager-Packstraße kann nicht gelöscht werden.")
@@ -446,8 +456,11 @@ def create_item_type(request: HttpRequest, payload: ItemTypeIn) -> tuple[int, It
 def rename_item_type(
     request: HttpRequest, item_type_id: int, payload: ItemTypeIn
 ) -> ItemType:
-    """Edit an item type. Admin only; the key (and history) stays unchanged.
-    Label and item class can both be updated."""
+    """Edit an item type.
+
+    Admin only; the key (and history) stays unchanged. Label and item class
+    can both be updated.
+    """
     label = payload.label.strip()
     if not label:
         raise HttpError(400, "Artikeltyp-Bezeichnung darf nicht leer sein.")
@@ -848,8 +861,10 @@ def import_groups(
 def update_group(
     request: HttpRequest, group_id: int, payload: CookinggroupIn
 ) -> dict[str, Any]:
-    """Update a group's name, number and packstreet. Admin only.
-    The stock group cannot be modified."""
+    """Update a group's name, number and packstreet.
+
+    Admin only. The stock group cannot be modified.
+    """
     name = payload.name.strip()
     internal_id = payload.internal_id.strip()
     if not name:
@@ -899,9 +914,12 @@ def get_group(request: HttpRequest, group_id: int) -> dict[str, Any]:
 )
 @require_permissions(IsAdmin)
 def delete_group(request: HttpRequest, group_id: int) -> tuple[int, None]:
-    """Delete a group. Admin only; blocked while any rentable item is still
-    rented out (quantity > 0) or if it is the stock group.
-    Past audit-log entries are cascade-deleted."""
+    """Delete a group.
+
+    Admin only; blocked while any rentable item is still rented out
+    (quantity > 0) or if it is the stock group. Past audit-log entries are
+    cascade-deleted.
+    """
     group = get_object_or_404(Cookinggroup, pk=group_id)
     if group.packstreet.is_stock:
         raise HttpError(400, "Die Lager-Gruppe kann nicht gelöscht werden.")
@@ -1425,8 +1443,12 @@ def delete_action(
 
 
 def _check_integrity() -> list[dict[str, Any]]:
-    """Compare the sum of all RentalActions against Rental.quantity for every
-    (group, item_type) pair and return a list of mismatches."""
+    """Compare rentals against their audit-log history.
+
+    Sums every non-deleted :class:`~dbtrials.models.RentalAction` per
+    (group, item_type) pair and reports each pair whose sum disagrees with the
+    corresponding ``Rental.quantity``.
+    """
     mismatches: list[dict[str, Any]] = []
     for group in Cookinggroup.objects.all():
         rentals = {r.item_type: r for r in Rental.objects.filter(group=group)}
@@ -1460,8 +1482,10 @@ def _check_integrity() -> list[dict[str, Any]]:
 )
 @require_permissions(IsAdmin)
 def integrity_check(request: HttpRequest) -> dict[str, Any]:
-    """Check that the sum of every group's RentalActions matches its Rental
-    rows.  Admin only."""
+    """Check that each group's rentals agree with its audit-log history.
+
+    Admin only.
+    """
     mismatches = _check_integrity()
     return {"ok": len(mismatches) == 0, "mismatches": mismatches}
 

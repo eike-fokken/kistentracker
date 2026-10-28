@@ -1,3 +1,9 @@
+"""GRAI (Global Returnable Asset Identifier) barcode helpers.
+
+Implements the GS1 Mod-10 check digit and structural validation for the
+18-character GRAI format used on the crates.
+"""
+
 import re
 
 SERIAL_RE = re.compile(r"^[A-Za-z0-9]*$")

@@ -1,3 +1,10 @@
+"""Database models for the Kistentracker rental tracker.
+
+The domain is deliberately small: packstreets host cooking groups, groups rent
+item types, and every change in quantity is recorded in an append-only audit
+log so that stock can be reconstructed at any point in time.
+"""
+
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as DjangoUserManager
 from django.db.models import (
@@ -99,9 +106,12 @@ class ItemType(Model):
     created_at = DateTimeField(default=timezone.now)
 
     class Meta:
+        """Default ordering: rentable items first, then oldest first."""
+
         ordering = ["-item_class", "created_at"]
 
     def __str__(self) -> str:
+        """Return the human-readable label."""
         return self.label
 
 
@@ -120,9 +130,12 @@ class Packstreet(Model):
     display_priority = FloatField(default=0.0)
 
     class Meta:
+        """Default ordering: manual display priority, then name."""
+
         ordering = ["display_priority", "name"]
 
     def __str__(self) -> str:
+        """Return the packstreet's name."""
         return self.name
 
 
@@ -138,6 +151,7 @@ class Cookinggroup(Model):
     )
 
     def __str__(self) -> str:
+        """Return the internal ID and name, as shown in lists."""
         return f"{self.internal_id} - {self.name}"
 
 
@@ -155,6 +169,8 @@ class Rental(Model):
     )
 
     class Meta:
+        """One row per group and item type, so quantities cannot be split."""
+
         constraints = [
             UniqueConstraint(
                 fields=["group", "item_type"],
@@ -163,6 +179,7 @@ class Rental(Model):
         ]
 
     def __str__(self) -> str:
+        """Return the group, quantity and item type."""
         return f"{self.group.name}: {self.quantity} x {self.item_type}"
 
 
@@ -179,9 +196,12 @@ class Crate(Model):
     last_seen_at = DateTimeField(null=True)
 
     class Meta:
+        """Default ordering: by barcode."""
+
         ordering = ["barcode"]
 
     def __str__(self) -> str:
+        """Return the crate's barcode."""
         return self.barcode
 
 
@@ -213,9 +233,12 @@ class RentalAction(Model):
     )
 
     class Meta:
+        """Default ordering: newest action first."""
+
         ordering = ["-timestamp"]
 
     def __str__(self) -> str:
+        """Return a compact one-line summary of the action."""
         return (
             f"{self.timestamp:%Y-%m-%d %H:%M} {self.action} "
             f"{self.quantity} x {self.item_type} ({self.group.name})"
@@ -241,9 +264,12 @@ class Correction(Model):
     timestamp = DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Default ordering: newest correction first."""
+
         ordering = ["-timestamp"]
 
     def __str__(self) -> str:
+        """Return the before/after quantities and what was corrected."""
         return (
             f"{self.timestamp:%Y-%m-%d %H:%M} correction "
             f"{self.old_quantity} → {self.new_quantity} "

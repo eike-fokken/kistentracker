@@ -53,6 +53,7 @@ class AllowAny(BasePermission):
 
     @override
     def has_permission(self, request: HttpRequest, user: AnonymousUser | User) -> bool:
+        """Allow everyone, including unauthenticated callers."""
         return True
 
 
@@ -64,6 +65,7 @@ class IsAuthenticated(BasePermission):
 
     @override
     def has_permission(self, request: HttpRequest, user: AnonymousUser | User) -> bool:
+        """Allow any authenticated user, deny anonymous callers."""
         return user is not None and getattr(user, "is_authenticated", False)
 
 
@@ -74,6 +76,7 @@ class IsAdmin(BasePermission):
 
     @override
     def has_permission(self, request: HttpRequest, user: AnonymousUser | User) -> bool:
+        """Allow only users holding the admin role."""
         return getattr(user, "is_admin", False)
 
 
@@ -140,6 +143,7 @@ class PermissionRouter(Router):
         view_func: Callable,
         **kwargs: Any,
     ) -> None:
+        """Wrap ``view_func`` so its declared policy is enforced before it runs."""
         super().add_api_operation(path, methods, self._guard(view_func), **kwargs)
 
     @staticmethod
