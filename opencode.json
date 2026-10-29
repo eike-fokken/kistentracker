@@ -6,7 +6,10 @@
         },
         "pylsp": {
             "command": [
-                "poetry run pylsp"
+                "poetry",
+                "run",
+                "python",
+                "tools/start-pylsp.py"
             ],
             "extensions": [
                 ".py",
