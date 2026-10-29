@@ -34,6 +34,7 @@ class CookieAuthTests(TestCase):
 
     def test_login_without_csrf_is_rejected(self) -> None:
         self._csrf_token()
+
         response = self.client.post(
             "/api/auth/login",
             data={"username": USERNAME, "password": PASSWORD},

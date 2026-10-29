@@ -1132,8 +1132,7 @@ def scan_crate(
                     crate.last_seen_with.packstreet.is_stock
                 ):
                     warning = (
-                        f"Kiste zuletzt bei "
-                        f"{crate.last_seen_with.internal_id} gesehen."
+                        f"Kiste zuletzt bei {crate.last_seen_with.internal_id} gesehen."
                     )
 
             RentalAction.objects.create(
@@ -1164,8 +1163,7 @@ def scan_crate(
                     crate.last_seen_with != group
                 ):
                     warning = (
-                        f"Kiste zuletzt bei "
-                        f"{crate.last_seen_with.internal_id} gesehen."
+                        f"Kiste zuletzt bei {crate.last_seen_with.internal_id} gesehen."
                     )
 
             if rental.quantity <= 0:
