@@ -25,6 +25,7 @@ before making further edits.
 ```
 cd dbtrials
 poetry run mypy dbtrials
+poetry run flake8 dbtrials
 poetry run pylint dbtrials
 poetry run pydocstyle dbtrials
 poetry run black dbtrials
@@ -68,6 +69,7 @@ say so instead of trying to work around it.
 ## Backend (`dbtrials/`)
 
 - **Framework:** Django 6.0 with Django Ninja (`ninja` + `ninja-extra` extension), SQLite database
+- **Database support:** **Only SQLite has been tested.** The app relies on SQLite's single-writer behaviour and the `atomic()` blocks in `api.py` for correctness (e.g. `select_for_update()` is a no-op there). Databases with real concurrent writes (PostgreSQL, MariaDB) **may create problems** — races on `Rental`/`Crate` creation, `IntegrityError` on `get_or_create`, lost quantity increments — and must be verified before being used in production.
 - **Auth:** Dual auth — Django session cookies for the browser SPA, JWT (via `ninja-jwt`) for programmatic/server access
 - **Static files:** WhiteNoise middleware
 

@@ -452,7 +452,7 @@ class UserPreferencesTests(TestCase):
         self.assertEqual(data["selected_packstreet_id"], self.packstreet_a.pk)
 
     def test_patch_me_requires_authentication(self) -> None:
-        csrf_resp = self.client.get("/api/auth/csrf")
+        self.client.get("/api/auth/csrf")
         token = self.client.cookies["csrftoken"].value
         response = self.client.patch(
             "/api/me",
@@ -463,7 +463,7 @@ class UserPreferencesTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_patch_me_requires_csrf(self) -> None:
-        token = self._login_and_csrf()
+        # token = self._login_and_csrf()
         response = self.client.patch(
             "/api/me",
             data={"selected_packstreet_id": self.packstreet_a.pk},

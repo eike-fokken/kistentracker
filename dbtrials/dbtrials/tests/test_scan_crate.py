@@ -1,10 +1,8 @@
 """Tests for barcode crate scanning and its stock/crate bookkeeping."""
 
-from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 
@@ -186,20 +184,26 @@ class ScanCrateTests(TestCase):
         self.assertEqual(crate.last_seen_with, self.group)
 
     # --- Concurrency --------------------------------------------------------
-
-    def test_concurrent_first_scans_create_one_crate(self) -> None:
-        def scan() -> int:
-            response = self._scan(self.group.pk)
-            return response.status_code
-
-        try:
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                statuses = list(executor.map(lambda _: scan(), range(2)))
-        except Exception as exc:  # SQLite may refuse concurrent writers
-            self.skipTest(f"database does not support concurrent writes: {exc}")
-        finally:
-            connection.close()
-
-        self.assertEqual(Crate.objects.filter(barcode=BARCODE).count(), 1)
-        self.assertEqual(statuses.count(200), 2, statuses)
-        self.assertEqual(self._quantity(self.group), 2)
+    #
+    # Only SQLite has been tested so far. On SQLite this test cannot pass inside
+    # ``TestCase`` (the wrapping transaction holds the write lock, so the worker
+    # threads always hit "database is locked") and it was therefore permanently
+    # skipped. It is disabled until a database with real concurrent writes is
+    # supported and tested. Re-enable it as a ``TransactionTestCase`` then.
+    #
+    # def test_concurrent_first_scans_create_one_crate(self) -> None:
+    #     def scan() -> int:
+    #         response = self._scan(self.group.pk)
+    #         return response.status_code
+    #
+    #     try:
+    #         with ThreadPoolExecutor(max_workers=2) as executor:
+    #             statuses = list(executor.map(lambda _: scan(), range(2)))
+    #     except Exception as exc:  # SQLite may refuse concurrent writers
+    #         self.skipTest(f"database does not support concurrent writes: {exc}")
+    #     finally:
+    #         connection.close()
+    #
+    #     self.assertEqual(Crate.objects.filter(barcode=BARCODE).count(), 1)
+    #     self.assertEqual(statuses.count(200), 2, statuses)
+    #     self.assertEqual(self._quantity(self.group), 2)
